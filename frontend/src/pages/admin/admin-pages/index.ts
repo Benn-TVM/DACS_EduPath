@@ -1,0 +1,6 @@
+export * from './CoursesPage'
+export * from './OverviewPage'
+export * from './ReportsPage'
+export * from './SettingsPage'
+export * from './TaxonomyPage'
+export * from './UsersPage'

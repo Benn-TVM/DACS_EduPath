@@ -1,0 +1,91 @@
+Bước 1: Ghi nhận sự thay đổi
+python manage.py makemigrations
+Bước 2: Bắn nội dung cập nhật đó vào SQL Server
+python manage.py migrate
+----------------------------------------------------------------
+tao tai khoan admin
+python manage.py createsuperuser
+chay django
+venv\Scripts\activate
+py manage.py runserver
+chay react
+npm run dev
+----------------------------------------------------------------
+django-admin startproject SwiftPath backend
+----------------------------------------------------------------
+
+http://localhost:88/trinhvietmy/Account/checkLogin
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+
+{
+  "username": "user_1775546776",
+  "email": "user_1775546776@example.com",
+  "password": "Postman123!",
+  "password_confirm": "Postman123!"
+}
+#-----------------------Các table trong SQL-----------------------------
+auth_user -> NguoiDungHeThong
+auth_group -> NhomNguoiDung
+auth_permission -> QuyenHeThong
+auth_user_groups -> NguoiDung_ThuocNhom
+auth_user_user_permissions -> NguoiDung_Quyen
+auth_group_permissions -> Nhom_Quyen
+
+#-----------------------Các API hiện có-----------------------------
+GET /hello -> 200
+GET /courses -> 200, trả 130 khóa học
+GET /search/?q=lap trinh python&top_k=3 -> 200, trả 3 kết quả phù hợp
+POST /auth/register/ -> 201, tạo user mới thành công
+POST /auth/login/ -> 200, trả refresh, access, user
+GET /auth/me -> 200, đọc đúng thông tin user
+PUT /auth/onboarding -> 200, cập nhật hồ sơ học tập thành công
+POST /auth/refresh -> 200, cấp access token mới
+GET /recommendations/?top_k=3 -> 200, trả gợi ý theo onboardingc
+API lịch sử tìm kiếm:
+GET /api/search/history/
+DELETE /api/search/history/
+DELETE /api/search/history/<id>/
+API khóa học đã lưu:
+GET /api/saved-courses/
+POST /api/saved-courses/
+DELETE /api/saved-courses/<course_id>/
+---------------------------------------------
+POST /api/auth/register/
+POST /api/auth/login/
+GET  /api/search/?q=python
+GET  /api/recommendations/
+POST /api/roadmap/generate/
+GET  /api/dashboard/stats/
+POST /api/courses/compare/
+GET  /api/reviews/
+{
+  "username": "user_test",
+  "email": "user_tetst6@example.com",
+  "password": "trinhmy123",
+  "password_confirm": "trinhmy123"
+}
+-------- thuật toán đang sử dụng-----------
+1. Thuật toán tìm kiếm & gợi ý (Machine Learning truyền thống):
+
+TF-IDF (Term Frequency-Inverse Document Frequency): Thuật toán này dùng để mã hóa văn bản (tiêu đề khóa học, mô tả, thông tin tìm kiếm, form nhập liệu) thành ma trận số học, xác định độ quan trọng của các từ khóa.
+Cosine Similarity (Độ tương đồng Cosine): Dùng để tính toán đo lường góc độ sai lệch và độ tương hợp giữa chuỗi tìm kiếm/hồ sơ của user so với danh sách khóa học, qua đó dùng để "rank" xếp hạng đâu là khóa học phù hợp nhất (dùng cho API /api/recommendations/ và /api/search/).
+2. Thuật toán Trí tuệ Nhân tạo - Generative AI (LLMs):
+
+Prompt Engineering & Context Injection: Thay vì chỉ lấy data chay, hệ thống đã nạp ngầm (inject) dữ liệu Database vào Prompt kết hợp với thư viện Groq AI.
+Mô hình LLaMA-3.3-70B: Bạn đang sử dụng trực tiếp mô hình ngôn ngữ LLaMa-3.3 mới và thông minh nhất để để sinh tự động nội dung theo format JSON (API /api/roadmap/generate/) và bóc tách dữ liệu theo chuỗi ngữ cảnh để tóm tắt các khóa học (/api/courses/compare/).
+3. Các Thuật toán Xử lý Mảng & Token (Tiền xử lý văn bản):
+
+Tokenization & Stopword Removal: Xử lý và chặt nhỏ đoạn chữ, loại bỏ ký tự đặc biệt, dấu câu, biến đổi thành các Token chuẩn hóa thông qua hàm tokenize_text.
+Regex Extraction: Dùng Regex (Regular Expressions) để bóc tách luồng text thuần từ AI và trích xuất thành mảng JSON Data để lưu vào bảng Database một cách bảo mật.
+4. Mật mã học & Mã hóa An ninh:
+
+PBKDF2/SHA-256 (Password Hashing): Để mã hóa băm mật khẩu của người dùng không thể khôi phục trong DB của Django.
+HS256 (HMAC-SHA256): Phương pháp ký điện tử dùng trong quy trình mã hóa Token JWT (JSON Web Token) cho quá trình xác thực Login / Cấp phát token cho hệ thống.
+
+
+không được làm sai sót gì và thực hiện yêu cầu sau:
+1. 

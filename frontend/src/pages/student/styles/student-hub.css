@@ -1,0 +1,264 @@
+/* ===== Student Hub Page ===== */
+
+.hub-page {
+  display: flex;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+}
+
+.hub-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin-left: var(--shell-sidebar-width);
+}
+
+.hub-content {
+  flex: 1;
+  margin: 0 auto;
+  padding: calc(var(--shell-topbar-height) + 2rem) 2.5rem 3rem;
+  width: 100%;
+}
+
+.hub-header {
+  margin-bottom: 2.5rem;
+  text-align: center;
+}
+
+.hub-header h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--color-primary);
+}
+
+.hub-header p {
+  margin: 0.5rem 0 0;
+  color: var(--color-text-secondary);
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+/* ===== Filter / Sort ===== */
+
+.hub-filters {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.5rem;
+}
+
+.hub-sort-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(226, 238, 244, 0.9);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 200ms;
+}
+
+.hub-sort-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.hub-sort-btn:not(.active):hover {
+  background: var(--color-surface-soft);
+}
+
+.hub-sort-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ===== Feed List ===== */
+
+.hub-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.hub-review-card {
+  padding: 1.5rem;
+  border-radius: 1.25rem;
+  background: var(--color-surface);
+  box-shadow: 0 4px 20px rgba(0, 55, 72, 0.05);
+  border: 1px solid rgba(226, 238, 244, 0.8);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.hub-review-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 55, 72, 0.08);
+  border-color: rgba(73, 85, 179, 0.15);
+}
+
+.hub-review-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.hub-review-card__user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.hub-review-card__avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(73, 85, 179, 0.1), rgba(99, 102, 241, 0.1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--color-primary);
+}
+
+.hub-review-card__meta h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.hub-review-card__meta span {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 0.1rem;
+}
+
+.hub-review-card__course {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.85rem;
+  background: var(--color-surface-soft);
+  border-radius: 0.5rem;
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.hub-review-card__course:hover {
+  text-decoration: underline;
+}
+
+.hub-review-card__rating {
+  display: flex;
+  color: #fbbf24;
+  font-size: 1rem;
+  gap: 0.1rem;
+  margin-bottom: 0.75rem;
+}
+
+.hub-review-card__comment {
+  margin: 0 0 1.25rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--color-text-secondary);
+}
+
+/* ===== Votes ===== */
+
+.hub-review-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(226, 238, 244, 0.6);
+}
+
+.hub-vote-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--color-surface-soft);
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.hub-vote-btn:hover {
+  background: rgba(226, 238, 244, 0.8);
+}
+
+.hub-vote-btn.is-active.upvote {
+  background: #dcfce7;
+  color: #16a34a;
+  border-color: #bbf7d0;
+}
+
+.hub-vote-btn.is-active.downvote {
+  background: #fee2e2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+/* ===== Empty & Loading ===== */
+
+.hub-loading {
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.hub-loading__spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(73, 85, 179, 0.15);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  margin: 0 auto 1rem;
+  animation: hub-spin 0.8s linear infinite;
+}
+
+@keyframes hub-spin {
+  to { transform: rotate(360deg); }
+}
+
+.hub-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: var(--color-surface);
+  border-radius: 1.5rem;
+  border: 2px dashed rgba(226, 238, 244, 0.8);
+}
+
+.hub-empty h2 {
+  font-family: var(--font-display);
+  color: var(--color-text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 1024px) {
+  .hub-main {
+    margin-left: 180px;
+  }
+}
+
+@media (max-width: 768px) {
+  .hub-main {
+    margin-left: 0;
+  }
+  
+  .hub-content {
+    padding: calc(var(--shell-topbar-height) + 1.5rem) 1.5rem 2rem;
+  }
+}
