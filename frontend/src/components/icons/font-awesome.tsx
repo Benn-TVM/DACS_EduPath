@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faStar as farStar } from '@fortawesome/free-regular-svg-icons'
@@ -10,9 +11,11 @@ import {
   faBookOpen,
   faBookmark,
   faBullseye,
+  faCamera,
   faChartColumn,
   faChartLine,
   faCheck,
+  faChevronDown,
   faChevronLeft,
   faChevronRight,
   faCircleDot,
@@ -22,11 +25,11 @@ import {
   faDesktop,
   faEnvelope,
   faFlask,
-  faGear,
   faGraduationCap,
   faHeart,
   faHouse,
   faKeyboard,
+  faLayerGroup,
   faListCheck,
   faMagnifyingGlass,
   faMicrochip,
@@ -42,7 +45,12 @@ import {
   faTrashCan,
   faUser,
   faUsers,
+  faCalendar,
   faXmark,
+  faImage,
+  faLink,
+  faTags,
+  faPaperPlane,
 } from '@fortawesome/free-solid-svg-icons'
 
 export const appIcons = {
@@ -55,7 +63,6 @@ export const appIcons = {
   history: faClock,
   clock: faClock,
   profile: faUser,
-  settings: faGear,
   logout: faRightFromBracket,
   notifications: faBell,
   back: faArrowLeft,
@@ -90,6 +97,17 @@ export const appIcons = {
   prev: faChevronLeft,
   chevron: faChevronRight,
   admin: faShieldHalved,
+  camera: faCamera,
+  chevronDown: faChevronDown,
+  categories: faLayerGroup,
+  users: faUsers,
+  calendar: faCalendar,
+  playCircle: faCirclePlay,
+  save: faBookmark,
+  image: faImage,
+  link: faLink,
+  tags: faTags,
+  send: faPaperPlane,
 } satisfies Record<string, IconDefinition>
 
 export function AppFaIcon({

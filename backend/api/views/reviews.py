@@ -1,37 +1,13 @@
-from django.db.models import Count
-from django.utils.text import slugify
+from django.db.models import Count, Q
 from rest_framework import permissions, status
-from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.exceptions import TokenError
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView
 
-from ..models import Course, CourseCategory, CourseReview, CourseTag, ReviewVote, Roadmap, RoadmapStep, SavedCourse, SearchHistory, UserProfile
+from ..models import Course, CourseReview, ReviewVote
 from ..serializers import (
-    CourseCategorySerializer,
     CourseReviewSerializer,
-    CourseSerializer,
-    CourseTagSerializer,
     CreateReviewSerializer,
-    EduPathTokenObtainPairSerializer,
-    EduPathTokenRefreshSerializer,
-    GenerateRoadmapInputSerializer,
-    RankedCourseSerializer,
-    RegisterSerializer,
-    RoadmapListSerializer,
-    RoadmapSerializer,
-    RoadmapStepSerializer,
-    SavedCourseCreateSerializer,
-    SavedCourseSerializer,
-    SearchHistorySerializer,
-    UserProfileSerializer,
-    UserSerializer,
 )
-from ..services import build_profile_query, rank_courses_by_text
-
-from .base import *
 
 class ReviewListCreateAPIView(APIView):
     """GET /api/reviews/ — Danh sách đánh giá (feed cộng đồng).
@@ -50,8 +26,6 @@ class ReviewListCreateAPIView(APIView):
 
         sort = request.query_params.get("sort", "recent")
         if sort == "top":
-            from django.db.models import Count, Q
-
             queryset = queryset.annotate(
                 score=Count("votes", filter=Q(votes__vote_type=ReviewVote.UPVOTE))
                 - Count("votes", filter=Q(votes__vote_type=ReviewVote.DOWNVOTE))

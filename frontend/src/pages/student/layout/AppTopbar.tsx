@@ -27,7 +27,6 @@ export function AppTopbar({
   const displayName = currentUser
     ? [currentUser.first_name, currentUser.last_name].filter(Boolean).join(' ').trim() || currentUser.username
     : 'Người dùng EduPath'
-
   useEffect(() => {
     if (!isMenuOpen || !isAuthenticated) {
       return
@@ -67,16 +66,30 @@ export function AppTopbar({
 
   const searchField = searchPlaceholder ? (
     <>
-      <span className="app-topbar__search-icon" aria-hidden="true">
-        <AppFaIcon icon={appIcons.search} fixedWidth={false} />
-      </span>
+      {onSearchSubmit ? (
+        <button
+          className="app-topbar__search-icon app-topbar__search-icon--button"
+          type="submit"
+          aria-label="Tìm kiếm"
+        >
+          <AppFaIcon icon={appIcons.search} fixedWidth={false} />
+        </button>
+      ) : (
+        <span className="app-topbar__search-icon" aria-hidden="true">
+          <AppFaIcon icon={appIcons.search} fixedWidth={false} />
+        </span>
+      )}
       <input
         type="text"
         placeholder={searchPlaceholder}
         value={searchValue}
         onChange={onSearchChange ? (event) => onSearchChange(event.target.value) : undefined}
       />
-      {searchButtonLabel ? <button type="submit">{searchButtonLabel}</button> : null}
+      {searchButtonLabel ? (
+        <button className="app-topbar__search-submit" type="submit">
+          {searchButtonLabel}
+        </button>
+      ) : null}
     </>
   ) : null
 
@@ -117,7 +130,16 @@ export function AppTopbar({
                   <strong>{displayName}</strong>
                 </span>
                 <div className="app-topbar__avatar">
-                  <img src={appTopbarAvatar} alt={displayName} />
+                  <img
+                    src={
+                      currentUser?.profile?.avatar
+                        ? currentUser.profile.avatar.startsWith('http')
+                          ? currentUser.profile.avatar
+                          : `http://localhost:8000${currentUser.profile.avatar}`
+                        : appTopbarAvatar
+                    }
+                    alt={displayName}
+                  />
                 </div>
               </button>
 
@@ -134,10 +156,6 @@ export function AppTopbar({
                   <button type="button" className="app-topbar__menu-item" onClick={() => handleMenuNavigation('/profile')}>
                     <AppFaIcon icon={appIcons.profile} />
                     <span>Hồ sơ cá nhân</span>
-                  </button>
-                  <button type="button" className="app-topbar__menu-item" onClick={() => handleMenuNavigation('/settings')}>
-                    <AppFaIcon icon={appIcons.settings} />
-                    <span>Cài đặt</span>
                   </button>
                   <button type="button" className="app-topbar__menu-item is-danger" onClick={handleLogout}>
                     <AppFaIcon icon={appIcons.logout} />

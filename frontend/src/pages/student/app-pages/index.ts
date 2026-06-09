@@ -1,11 +1,8 @@
 export { DashboardPage } from './DashboardPage'
 export { SearchPage } from './SearchPage'
 export { RoadmapPage } from './RoadmapPage'
-export { ComparePage } from './ComparePage'
 export { StudentHubPage } from './StudentHubPage'
 export { SavedCoursesPage } from './SavedCoursesPage'
 export { SearchHistoryPage } from './SearchHistoryPage'
 export { ProfilePage } from './ProfilePage'
-export { SettingsPage } from './SettingsPage'
 export { CourseDetailPage } from './CourseDetailPage'
-

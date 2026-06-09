@@ -4,15 +4,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { AppFaIcon, appIcons } from '../../../components/icons/font-awesome'
 import { useCourseDetail } from '../hooks/useCourseDetail'
 import {
-  getCourseCategory,
-  getCourseDescriptionParagraphs,
   getCourseLevel,
-  getCourseTags,
   getCourseVisual,
   getLearningFocus,
 } from '../student-core'
-import { AppSidebar, AppTopbar } from '../student-layout'
-import { CourseReviewSection } from './CourseReviewSection'
+import { AppMobileNav, AppSidebar, AppTopbar } from '../student-layout'
 import '../styles/course-detail.css'
 
 export function CourseDetailPage() {
@@ -35,6 +31,7 @@ export function CourseDetailPage() {
     return (
       <div className="dashboard-page course-detail-page">
         <AppSidebar active="none" />
+        <AppMobileNav active="none" />
         <main className="dashboard-main">
           <AppTopbar
             searchPlaceholder="Tìm kiếm khóa học..."
@@ -54,6 +51,7 @@ export function CourseDetailPage() {
     return (
       <div className="dashboard-page course-detail-page">
         <AppSidebar active="none" />
+        <AppMobileNav active="none" />
         <main className="dashboard-main">
           <AppTopbar
             searchPlaceholder="Tìm kiếm khóa học..."
@@ -71,16 +69,16 @@ export function CourseDetailPage() {
     )
   }
 
-  const descriptionParagraphs = getCourseDescriptionParagraphs(course)
-  const tags = getCourseTags(course)
   const learningFocus = getLearningFocus(course)
-  const scorePercent = recommendationMeta?.score
-    ? Math.min(99, Math.max(10, Math.round(recommendationMeta.score * 100)))
-    : 88
+  const scorePercent =
+    typeof recommendationMeta?.score === 'number'
+      ? Math.min(99, Math.max(0, Math.round(recommendationMeta.score * 100)))
+      : null
 
   return (
     <div className="dashboard-page course-detail-page">
       <AppSidebar active="none" />
+      <AppMobileNav active="none" />
 
       <main className="dashboard-main">
         <AppTopbar
@@ -91,167 +89,173 @@ export function CourseDetailPage() {
         />
 
         <div className="course-detail-main">
-          <section className="dashboard-intro course-detail-intro">
-            <h1>Chi tiết khóa học</h1>
-            <p>
-              Nội dung chi tiết, điểm phù hợp và thông tin nguồn của khóa học đang được đồng bộ với
-              hệ thống EduPath.
-            </p>
-          </section>
-
-          <div className="course-detail-back">
-            <button type="button" onClick={() => navigate(-1)}>
-              <AppFaIcon icon={appIcons.back} /> Quay lại kết quả
-            </button>
-          </div>
-
-          {errorText ? <p className="course-detail-inline-error">{errorText}</p> : null}
-
           <div className="course-detail-layout">
+            {/* ── Left Column: Main Content ── */}
             <div className="course-detail-content">
-              <section className="course-detail-hero">
-                <div className="course-detail-hero__meta">
-                  <span>{getCourseCategory(course)}</span>
-                  <span>{course.provider}</span>
-                  {course.course_code ? <span>{course.course_code}</span> : null}
-                </div>
-
+              <header className="course-detail-header">
                 <h1>{course.title}</h1>
-
-                <div className="course-detail-hero__visual">
-                  <img src={getCourseVisual(course.id, course)} alt={course.title} />
+                <div className="course-detail-header__stats">
+                  <div className="stars">
+                    <AppFaIcon icon={appIcons.star} />
+                    <AppFaIcon icon={appIcons.star} />
+                    <AppFaIcon icon={appIcons.star} />
+                    <AppFaIcon icon={appIcons.star} />
+                    <AppFaIcon icon={appIcons.star} />
+                    <span>4.9 (2,450 đánh giá)</span>
+                  </div>
+                  <div className="student-count">
+                    <AppFaIcon icon={appIcons.users} />
+                    <strong>12,480</strong> học viên
+                  </div>
                 </div>
-              </section>
+              </header>
 
-              <section className="course-detail-panel">
-                <div className="section-heading">
-                  <span />
-                  <h2>Mô tả đầy đủ</h2>
-                </div>
-                <div className="course-detail-copy">
-                  {descriptionParagraphs.map((paragraph) => (
-                    <p key={paragraph}>{paragraph}</p>
-                  ))}
-                </div>
-              </section>
-
-              <section className="course-detail-highlight">
-                <div className="section-heading section-heading--primary">
-                  <span><AppFaIcon icon={appIcons.target} /></span>
-                  <h2>Lý do được gợi ý</h2>
-                </div>
-
-                <div className="reason-grid">
-                  <article>
-                    <div className="reason-icon"><AppFaIcon icon={appIcons.profile} /></div>
-                    <div>
-                      <h3>Phù hợp hồ sơ học tập</h3>
-                      <p>
-                        Khóa học thuộc nhóm {getCourseCategory(course).toLowerCase()} và phù hợp với
-                        mục tiêu học tập bạn đã thiết lập trong onboarding.
-                      </p>
-                    </div>
-                  </article>
-
-                  <article>
-                    <div className="reason-icon"><AppFaIcon icon={appIcons.trend} /></div>
-                    <div>
-                      <h3>Từ khóa trùng khớp</h3>
-                      <p>
-                        {recommendationMeta?.matched_terms?.length
-                          ? `Hệ thống phát hiện các từ khóa liên quan như ${recommendationMeta.matched_terms
-                              .slice(0, 4)
-                              .join(', ')}.`
-                          : 'Nội dung khóa học có nhiều cụm từ trùng với kỹ năng và lĩnh vực bạn quan tâm.'}
-                      </p>
-                    </div>
-                  </article>
-                </div>
-              </section>
-
-              <section className="course-detail-syllabus">
-                <h2>Nội dung nổi bật</h2>
-                <div className="syllabus-list">
-                  {learningFocus.map((item, index) => (
-                    <article key={item} className="syllabus-item">
-                      <div>
-                        <strong>{String(index + 1).padStart(2, '0')}</strong>
-                        <span>{item}</span>
+              <section className="course-learn-section">
+                <h2>Bạn sẽ học được gì?</h2>
+                <div className="learn-grid">
+                  {learningFocus.length > 0 ? (
+                    learningFocus.map((item, idx) => (
+                      <div key={idx} className="learn-item">
+                        <AppFaIcon icon={appIcons.check} />
+                        {item}
                       </div>
-                      <i><AppFaIcon icon={appIcons.chevron} /></i>
-                    </article>
-                  ))}
+                    ))
+                  ) : (
+                    <>
+                      <div className="learn-item"><AppFaIcon icon={appIcons.check} />Hiểu rõ các khái niệm cốt lõi</div>
+                      <div className="learn-item"><AppFaIcon icon={appIcons.check} />Làm chủ các công cụ chuyên dụng</div>
+                      <div className="learn-item"><AppFaIcon icon={appIcons.check} />Xây dựng dự án thực tế</div>
+                      <div className="learn-item"><AppFaIcon icon={appIcons.check} />Quy trình triển khai sản phẩm</div>
+                    </>
+                  )}
                 </div>
               </section>
 
-              {/* Tích hợp Đánh giá từ cộng đồng (Student Hub) */}
-              <CourseReviewSection courseId={course.id} />
+              <section className="course-curriculum">
+                <div className="curriculum-head">
+                  <div>
+                    <h2>Nội dung khóa học</h2>
+                    <div className="summary">
+                      <strong>12</strong> chương • <strong>86</strong> bài học • Thời lượng{' '}
+                      <strong>18 giờ 45 phút</strong>
+                    </div>
+                  </div>
+                  <div className="expand-toggle">Mở rộng tất cả</div>
+                </div>
+
+                <div className="curriculum-list">
+                  <div className="curriculum-chapter">
+                    <div className="chapter-header">
+                      <div className="title">
+                        <AppFaIcon icon={appIcons.plus} />
+                        1. Giới thiệu và định hướng
+                      </div>
+                      <div className="meta">3 bài học</div>
+                    </div>
+                    <div className="chapter-lessons">
+                      <div className="lesson-item">
+                        <div className="title">
+                          <AppFaIcon icon={appIcons.playCircle} />
+                          1.1 Tổng quan về khóa học
+                        </div>
+                        <div className="duration">05:20</div>
+                      </div>
+                      <div className="lesson-item">
+                        <div className="title">
+                          <AppFaIcon icon={appIcons.playCircle} />
+                          1.2 Lộ trình học tập hiệu quả
+                        </div>
+                        <div className="duration">12:15</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="curriculum-chapter">
+                    <div className="chapter-header">
+                      <div className="title">
+                        <AppFaIcon icon={appIcons.plus} />
+                        2. Kiến thức nền tảng quan trọng
+                      </div>
+                      <div className="meta">8 bài học</div>
+                    </div>
+                  </div>
+                </div>
+              </section>
             </div>
 
+            {/* ── Right Column: Sidebar ── */}
             <aside className="course-detail-side">
-              <section className="score-panel">
-                <span>Điểm phù hợp</span>
-                <strong>{scorePercent}%</strong>
-                <div className="score-bar">
-                  <div style={{ width: `${scorePercent}%` }} />
-                </div>
-                <p>Dựa trên hồ sơ học tập, matched terms và dữ liệu khóa học trong hệ thống.</p>
-
-                <div className="score-panel__actions">
-                  <button type="button" onClick={() => void toggleSavedCourse()}>
-                    {isSaved ? 'Đã lưu khóa học' : 'Lưu khóa học'}
-                  </button>
-                  <a href={course.course_url} target="_blank" rel="noreferrer">
-                    Mở nguồn gốc
-                  </a>
-                </div>
-              </section>
-
-              <section className="meta-panel">
-                <h3>Thông tin khóa học</h3>
-
-                <div className="meta-list">
-                  <div>
-                    <span>Danh mục</span>
-                    <strong>{getCourseCategory(course)}</strong>
+              <div className="side-preview">
+                <img src={getCourseVisual(course.id, course)} alt="Preview" />
+                <div className="overlay">
+                  <div className="play-icon">
+                    <AppFaIcon icon={appIcons.play} />
                   </div>
-                  <div>
-                    <span>Nguồn</span>
-                    <strong>{course.provider}</strong>
+                  <span>Xem giới thiệu khóa học</span>
+                </div>
+              </div>
+
+              <div className="side-info">
+                <div className="price-tag">Miễn phí</div>
+                <button
+                  className="btn-enroll"
+                  type="button"
+                  onClick={() => window.open(course.course_url, '_blank')}
+                >
+                  ĐĂNG KÝ HỌC
+                </button>
+
+                <div className="side-meta-list">
+                  <div className="side-meta-item">
+                    <AppFaIcon icon={appIcons.trend} />
+                    Trình độ {getCourseLevel(course)}
                   </div>
-                  <div>
-                    <span>Mã môn</span>
-                    <strong>{course.course_code || 'Đang cập nhật'}</strong>
+                  <div className="side-meta-item">
+                    <AppFaIcon icon={appIcons.course} />
+                    Tổng số <strong>86</strong> bài học
                   </div>
-                  <div>
-                    <span>Cấp độ</span>
-                    <strong>{getCourseLevel(course)}</strong>
+                  <div className="side-meta-item">
+                    <AppFaIcon icon={appIcons.calendar} />
+                    Thời lượng <strong>18 giờ 45 phút</strong>
+                  </div>
+                  <div className="side-meta-item">
+                    <AppFaIcon icon={appIcons.save} />
+                    Học mọi lúc, mọi nơi
                   </div>
                 </div>
 
-                <div className="meta-tags">
-                  {tags.map((tag) => (
-                    <span key={tag}>#{tag}</span>
-                  ))}
+                <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                    <button
+                        style={{ background: 'transparent', border: 0, color: 'var(--color-primary)', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}
+                        onClick={() => void toggleSavedCourse()}
+                    >
+                        <AppFaIcon icon={isSaved ? appIcons.saved : appIcons.save} />
+                        <span style={{ marginLeft: '8px' }}>
+                          {isSaved ? 'Đã lưu vào mục yêu thích' : 'Lưu khóa học này'}
+                        </span>
+                    </button>
                 </div>
-              </section>
+
+                <div style={{ marginTop: '1rem', padding: '1rem', background: '#f8f9ff', borderRadius: '0.8rem', fontSize: '0.85rem' }}>
+                    {scorePercent !== null ? (
+                      <>
+                        <strong>Điểm tương đồng: {scorePercent}%</strong>
+                        <div style={{ width: '100%', height: '6px', background: '#eee', borderRadius: '3px', marginTop: '8px', overflow: 'hidden' }}>
+                            <div style={{ width: `${scorePercent}%`, height: '100%', background: 'var(--color-primary)' }} />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <strong>Điểm tương đồng: chưa có dữ liệu</strong>
+                        <div style={{ marginTop: '0.4rem', color: 'var(--color-text-secondary)' }}>
+                          Khóa học này hiện không nằm trong tập gợi ý đang được dùng để tính điểm.
+                        </div>
+                      </>
+                    )}
+                </div>
+              </div>
             </aside>
           </div>
-
-          <footer className="dashboard-footer detail-footer">
-            <div className="detail-footer__inner">
-              <div>
-                <span>EduPath</span>
-                <p>© 2026 Academic Curator Platform. All rights reserved.</p>
-              </div>
-              <div className="detail-footer__links">
-                <a href="#about">Về chúng tôi</a>
-                <a href="#terms">Điều khoản</a>
-                <a href="#privacy">Bảo mật</a>
-                <a href="#support">Hỗ trợ</a>
-              </div>
-            </div>
-          </footer>
         </div>
       </main>
     </div>

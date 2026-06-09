@@ -7,6 +7,15 @@ class CourseCategory(models.Model):
     name = models.CharField(max_length=120, unique=True, db_column="TenDanhMuc", verbose_name="Tên danh mục")
     slug = models.SlugField(max_length=140, unique=True, db_column="Slug", verbose_name="Slug")
     description = models.TextField(blank=True, db_column="MoTa", verbose_name="Mô tả")
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="children",
+        db_column="MaDanhMucCha",
+        verbose_name="Danh mục cha",
+    )
     created_at = models.DateTimeField(auto_now_add=True, db_column="NgayTao", verbose_name="Ngày tạo")
     updated_at = models.DateTimeField(auto_now=True, db_column="NgayCapNhat", verbose_name="Ngày cập nhật")
 
@@ -151,6 +160,13 @@ class UserProfile(models.Model):
         default=False,
         db_column="DaHoanThanhOnboarding",
         verbose_name="Đã hoàn thành onboarding",
+    )
+    avatar = models.ImageField(
+        upload_to="avatars/",
+        null=True,
+        blank=True,
+        db_column="AnhDaiDien",
+        verbose_name="Ảnh đại diện",
     )
     created_at = models.DateTimeField(auto_now_add=True, db_column="NgayTao", verbose_name="Ngày tạo")
     updated_at = models.DateTimeField(auto_now=True, db_column="NgayCapNhat", verbose_name="Ngày cập nhật")
@@ -388,3 +404,196 @@ class ReviewVote(models.Model):
 
     def __str__(self):
         return f"{self.user.username} {self.vote_type} review#{self.review_id}"
+
+
+class CommunityPost(models.Model):
+    """Bài viết cộng đồng từ sinh viên."""
+
+    id = models.BigAutoField(primary_key=True, db_column="MaBaiViet")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="community_posts",
+        db_column="MaNguoiDung",
+        verbose_name="Người đăng",
+    )
+    course = models.ForeignKey(
+        Course,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="community_posts",
+        db_column="MaKhoaHoc",
+        verbose_name="Khóa học (tùy chọn)",
+    )
+    title = models.CharField(
+        max_length=255,
+        blank=True,
+        db_column="TieuDe",
+        verbose_name="Tiêu đề",
+    )
+    content = models.TextField(
+        db_column="NoiDung",
+        verbose_name="Nội dung",
+    )
+    image = models.ImageField(
+        upload_to="posts/",
+        null=True,
+        blank=True,
+        db_column="AnhBaiViet",
+        verbose_name="Ảnh bài viết",
+    )
+    is_active = models.BooleanField(default=True, db_column="TrangThai", verbose_name="Hiển thị")
+    created_at = models.DateTimeField(auto_now_add=True, db_column="NgayTao", verbose_name="Ngày tạo")
+    updated_at = models.DateTimeField(auto_now=True, db_column="NgayCapNhat", verbose_name="Ngày cập nhật")
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Bài viết cộng đồng"
+        verbose_name_plural = "Bài viết cộng đồng"
+        db_table = "BaiVietCongDong"
+
+    def __str__(self):
+        return f"Post#{self.id} by {self.user.username}"
+
+
+class PostVote(models.Model):
+    """Upvote/Downvote cho bài viết."""
+
+    UPVOTE = "up"
+    DOWNVOTE = "down"
+    VOTE_CHOICES = [(UPVOTE, "Upvote"), (DOWNVOTE, "Downvote")]
+
+    id = models.BigAutoField(primary_key=True, db_column="MaVoteBaiViet")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="post_votes",
+        db_column="MaNguoiDung",
+        verbose_name="Người vote",
+    )
+    post = models.ForeignKey(
+        CommunityPost,
+        on_delete=models.CASCADE,
+        related_name="votes",
+        db_column="MaBaiViet",
+        verbose_name="Bài viết",
+    )
+    vote_type = models.CharField(
+        max_length=4,
+        choices=VOTE_CHOICES,
+        db_column="LoaiVote",
+        verbose_name="Loại vote",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_column="NgayTao", verbose_name="Ngày tạo")
+
+    class Meta:
+        verbose_name = "Vote bài viết"
+        verbose_name_plural = "Vote bài viết"
+        db_table = "VoteBaiViet"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "post"],
+                name="UQ_Vote_MaNguoiDung_MaBaiViet",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} {self.vote_type} post#{self.post_id}"
+
+
+class PostComment(models.Model):
+    """Binh luan/tra loi cho bai viet cong dong."""
+
+    id = models.BigAutoField(primary_key=True, db_column="MaBinhLuanBaiViet")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="post_comments",
+        db_column="MaNguoiDung",
+        verbose_name="Nguoi tra loi",
+    )
+    post = models.ForeignKey(
+        CommunityPost,
+        on_delete=models.CASCADE,
+        related_name="comments",
+        db_column="MaBaiViet",
+        verbose_name="Bai viet",
+    )
+    content = models.TextField(
+        db_column="NoiDung",
+        verbose_name="Noi dung",
+    )
+    is_active = models.BooleanField(default=True, db_column="TrangThai", verbose_name="Hien thi")
+    created_at = models.DateTimeField(auto_now_add=True, db_column="NgayTao", verbose_name="Ngay tao")
+    updated_at = models.DateTimeField(auto_now=True, db_column="NgayCapNhat", verbose_name="Ngay cap nhat")
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "Tra loi bai viet"
+        verbose_name_plural = "Tra loi bai viet"
+        db_table = "BinhLuanBaiViet"
+
+    def __str__(self):
+        return f"Comment#{self.id} on post#{self.post_id} by {self.user.username}"
+
+
+class RecommendationLog(models.Model):
+    """Nhật ký gợi ý AI — Ghi lại mỗi lần hệ thống trả kết quả gợi ý cho user."""
+
+    CONTEXT_DASHBOARD = "dashboard"
+    CONTEXT_SEARCH = "search"
+    CONTEXT_CHOICES = [
+        (CONTEXT_DASHBOARD, "Dashboard"),
+        (CONTEXT_SEARCH, "Tìm kiếm"),
+    ]
+
+    id = models.BigAutoField(primary_key=True, db_column="MaLog")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="recommendation_logs",
+        db_column="MaNguoiDung",
+        verbose_name="Người dùng",
+    )
+    context = models.CharField(
+        max_length=20,
+        choices=CONTEXT_CHOICES,
+        db_column="NguCanh",
+        verbose_name="Ngữ cảnh",
+    )
+    query_text = models.TextField(
+        blank=True,
+        db_column="VanBanTruyVan",
+        verbose_name="Văn bản truy vấn",
+    )
+    recommended_course_ids = models.TextField(
+        db_column="DanhSachMaKhoaHoc",
+        verbose_name="Danh sách ID khóa học gợi ý (JSON)",
+        help_text="JSON array of course IDs",
+    )
+    score_avg = models.FloatField(
+        null=True,
+        blank=True,
+        db_column="DiemTrungBinh",
+        verbose_name="Điểm tin cậy trung bình",
+    )
+    result_count = models.IntegerField(
+        default=0,
+        db_column="SoKetQua",
+        verbose_name="Số kết quả",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_column="NgayTao",
+        verbose_name="Thời gian",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Log gợi ý AI"
+        verbose_name_plural = "Log gợi ý AI"
+        db_table = "LogGoiY"
+
+    def __str__(self):
+        return f"Log #{self.id} — {self.user.username} ({self.context}) @ {self.created_at}"

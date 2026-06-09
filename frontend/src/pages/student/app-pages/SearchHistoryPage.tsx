@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { AppFaIcon, appIcons } from '../../../components/icons/font-awesome'
 import {
   getHistoryTags,
   normalizeText,
 } from '../student-core'
 import { useSearchHistory } from '../hooks/useSearchHistory'
-import { AppSidebar, AppTopbar } from '../student-layout'
+import { AppMobileNav, AppSidebar, AppTopbar } from '../student-layout'
 import '../styles/saved-history.css'
 
 export function SearchHistoryPage() {
@@ -33,6 +33,7 @@ export function SearchHistoryPage() {
   return (
     <div className="history-page">
       <AppSidebar active="history" />
+      <AppMobileNav active="history" />
       <AppTopbar
         searchPlaceholder="Tìm kiếm trong lịch sử..."
         searchValue={searchTerm}
@@ -44,10 +45,6 @@ export function SearchHistoryPage() {
           <section className="history-header">
             <div>
               <h1>Lịch sử tìm kiếm</h1>
-              <p>
-                Bạn đã có <strong>{historyItems.length} lượt tìm kiếm</strong> được lưu lại để quay
-                lại nhanh những chủ đề mình từng khám phá trên EduPath.
-              </p>
             </div>
 
             <button
@@ -135,16 +132,6 @@ export function SearchHistoryPage() {
               </article>
             ))}
           </div>
-
-          <section className="history-suggestion">
-            <span><AppFaIcon icon={appIcons.ai} /></span>
-            <h3>Tiếp tục khám phá thêm chủ đề mới</h3>
-            <p>
-              EduPath có thể dùng các truy vấn gần đây của bạn để gợi ý thêm những khóa học liên
-              quan và lộ trình học tập sát hơn với mục tiêu hiện tại.
-            </p>
-            <Link to="/search">Mở trang tìm kiếm</Link>
-          </section>
         </div>
       </main>
     </div>

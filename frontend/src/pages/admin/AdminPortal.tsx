@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import '../student/styles/shared.css'
 import './admin-portal.css'
-import { CoursesPage, OverviewPage, ReportsPage, SettingsPage, TaxonomyPage, UsersPage } from './admin-pages'
+import { AIOverviewPage, CourseManagerPage, CategoryManagerPage, UserManagerPage, RecommendationLogsPage } from './admin-pages'
 import { AdminSidebar, AdminTopbar } from './admin-layout'
 
 function AdminPortal() {
@@ -16,12 +16,11 @@ function AdminPortal() {
         <main className="admin-main">
           <Routes>
             <Route index element={<Navigate to="overview" replace />} />
-            <Route path="overview" element={<OverviewPage />} />
-            <Route path="courses" element={<CoursesPage />} />
-            <Route path="taxonomy" element={<TaxonomyPage />} />
-            <Route path="users" element={<UsersPage />} />
-            <Route path="reports" element={<ReportsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+            <Route path="overview" element={<AIOverviewPage />} />
+            <Route path="courses" element={<CourseManagerPage />} />
+            <Route path="categories" element={<CategoryManagerPage />} />
+            <Route path="users" element={<UserManagerPage />} />
+            <Route path="logs" element={<RecommendationLogsPage />} />
             <Route path="*" element={<Navigate to="overview" replace />} />
           </Routes>
         </main>

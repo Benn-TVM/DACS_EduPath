@@ -1,6 +1,6 @@
 import { Suspense, lazy } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import { RequireAdmin } from './components/routing/AuthRoutes'
+import { RedirectIfAdmin, RequireAdmin } from './components/routing/AuthRoutes'
 
 const StudentPortal = lazy(() => import('./pages/student/StudentPortal'))
 const AdminPortal = lazy(() => import('./pages/admin/AdminPortal'))
@@ -24,7 +24,7 @@ function App() {
             </RequireAdmin>
           )}
         />
-        <Route path="/*" element={<StudentPortal />} />
+        <Route path="/*" element={<RedirectIfAdmin><StudentPortal /></RedirectIfAdmin>} />
       </Routes>
     </Suspense>
   )

@@ -33,7 +33,7 @@ export function useReviews(courseId?: number) {
       }
       const response = await api.get<CourseReview[]>(`reviews/?${params.toString()}`)
       setReviews(response.data)
-    } catch (error: unknown) {
+    } catch {
       setErrorText('Không thể tải đánh giá. Vui lòng thử lại sau.')
     } finally {
       setIsLoading(false)
@@ -41,22 +41,17 @@ export function useReviews(courseId?: number) {
   }, [courseId])
 
   const submitReview = async (id: number, rating: number, comment: string) => {
-    try {
-      const response = await api.post<CourseReview>('reviews/', { course_id: id, rating, comment })
-      setReviews((prev) => {
-        const index = prev.findIndex((r) => r.id === response.data.id)
-        if (index !== -1) {
-          const newArray = [...prev]
-          newArray[index] = response.data
-          return newArray
-        }
-        return [response.data, ...prev]
-      })
-      return true
-    } catch (error: unknown) {
-      // Return error to UI if any
-      throw error
-    }
+    const response = await api.post<CourseReview>('reviews/', { course_id: id, rating, comment })
+    setReviews((prev) => {
+      const index = prev.findIndex((r) => r.id === response.data.id)
+      if (index !== -1) {
+        const newArray = [...prev]
+        newArray[index] = response.data
+        return newArray
+      }
+      return [response.data, ...prev]
+    })
+    return true
   }
 
   const toggleVote = async (reviewId: number, voteType: 'up' | 'down') => {
@@ -91,7 +86,7 @@ export function useReviews(courseId?: number) {
           }
         })
       )
-    } catch (error) {
+    } catch {
       /* ignore inline error */
     }
   }
@@ -105,4 +100,3 @@ export function useReviews(courseId?: number) {
     toggleVote,
   }
 }
-

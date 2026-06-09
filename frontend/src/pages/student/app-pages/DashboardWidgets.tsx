@@ -67,18 +67,8 @@ export function DashboardWidgets() {
 
   return (
     <section className="dw-section">
-      <div className="dw-section__header">
-        <h2><AppFaIcon icon={appIcons.stats} /> Tổng quan cá nhân</h2>
-        <p>Tiến độ, kỹ năng và thống kê học tập của bạn</p>
-      </div>
-
-      <div className="dw-grid">
+      <div className="dw-grid dw-grid--roadmap-only">
         <RoadmapProgressWidget progress={stats.roadmap_progress} />
-        <SkillsWidget
-          achievedSkills={stats.achieved_skills}
-          targetSkills={stats.all_target_skills}
-        />
-        <QuickStatsWidget summary={stats.stats_summary} />
       </div>
     </section>
   )
@@ -157,7 +147,7 @@ function RoadmapProgressWidget({ progress }: { progress: RoadmapProgress | null 
   )
 }
 
-function SkillsWidget({
+export function SkillsWidget({
   achievedSkills,
   targetSkills,
 }: {
@@ -217,7 +207,7 @@ function SkillsWidget({
   )
 }
 
-function QuickStatsWidget({
+export function QuickStatsWidget({
   summary,
 }: {
   summary: { total_roadmaps: number; total_saved: number }

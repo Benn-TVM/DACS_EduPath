@@ -42,6 +42,17 @@ export function RedirectIfAuthenticated({
   return children ? <>{children}</> : <Outlet />
 }
 
+export function RedirectIfAdmin({
+  children,
+  redirectTo = '/admin',
+}: AuthRouteProps) {
+  if (hasAuthSession() && isAdminUser(getAuthUser())) {
+    return <Navigate to={redirectTo} replace />
+  }
+
+  return children ? <>{children}</> : <Outlet />
+}
+
 export function RequireAdmin({
   children,
   redirectTo = '/dashboard',

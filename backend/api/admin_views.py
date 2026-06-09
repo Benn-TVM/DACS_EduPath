@@ -1,13 +1,14 @@
 from django.contrib.auth import get_user_model
 from django.db import connection
 from django.db.models import Count
+from django.db.models.functions import Length
 from django.utils.text import slugify
 from rest_framework import permissions, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Course, CourseCategory, CourseTag, SavedCourse, SearchHistory
+from .models import Course, CourseCategory, CourseTag, RecommendationLog, SavedCourse, SearchHistory
 from .serializers import CourseCategorySerializer, CourseTagSerializer
 
 
@@ -91,10 +92,12 @@ def _course_schema_unavailable_response():
     )
 
 
-def _fetch_admin_courses_from_legacy_schema() -> list[dict]:
+def _fetch_admin_courses_from_legacy_schema(*, compact: bool = False, course_id: int | None = None) -> list[dict]:
+    where_clause = "WHERE MaKhoaHoc = %s" if course_id is not None else ""
+    params = [course_id] if course_id is not None else []
     with connection.cursor() as cursor:
         cursor.execute(
-            """
+            f"""
             SELECT
                 MaKhoaHoc,
                 TieuDe,
@@ -110,10 +113,13 @@ def _fetch_admin_courses_from_legacy_schema() -> list[dict]:
                 LoaiChungChi,
                 TrangThai,
                 NgayTao,
-                NgayCapNhat
+                NgayCapNhat,
+                LEN(VanBanTimKiem)
             FROM KhoaHoc
+            {where_clause}
             ORDER BY NgayCapNhat DESC, TieuDe ASC
-            """
+            """,
+            params,
         )
         rows = cursor.fetchall()
 
@@ -127,8 +133,9 @@ def _fetch_admin_courses_from_legacy_schema() -> list[dict]:
                 "provider": row[3],
                 "course_url": row[4],
                 "normalized_title": row[5],
-                "search_document": row[6],
-                "tokenized_text": row[7],
+                "search_document": "" if compact else row[6],
+                "tokenized_text": "" if compact else row[7],
+                "search_document_length": row[15] or 0,
                 "difficulty_level": row[8] or "",
                 "estimated_hours": row[9],
                 "price_type": row[10] or "free",
@@ -143,9 +150,10 @@ def _fetch_admin_courses_from_legacy_schema() -> list[dict]:
     return payloads
 
 
-def _serialize_admin_course(course: Course, *, include_taxonomy: bool) -> dict:
+def _serialize_admin_course(course: Course, *, include_taxonomy: bool, compact: bool = False) -> dict:
     category_payload = None
     tag_payloads = []
+    tag_ids = []
 
     if include_taxonomy:
         if course.category_id and getattr(course, "category", None) is not None:
@@ -157,15 +165,23 @@ def _serialize_admin_course(course: Course, *, include_taxonomy: bool) -> dict:
                 "description": category.description,
             }
 
-        for tag in course.tags.all():
-            tag_payloads.append(
-                {
-                    "id": tag.id,
-                    "name": tag.name,
-                    "slug": tag.slug,
-                    "description": tag.description,
-                }
-            )
+        if compact:
+            tag_ids = list(getattr(course, "_admin_tag_ids", []))
+        else:
+            for tag in course.tags.all():
+                tag_ids.append(tag.id)
+                tag_payloads.append(
+                    {
+                        "id": tag.id,
+                        "name": tag.name,
+                        "slug": tag.slug,
+                        "description": tag.description,
+                    }
+                )
+
+    search_document_length = getattr(course, "search_document_length", None)
+    if search_document_length is None and not compact:
+        search_document_length = len((course.search_document or "").strip())
 
     return {
         "id": course.id,
@@ -174,14 +190,16 @@ def _serialize_admin_course(course: Course, *, include_taxonomy: bool) -> dict:
         "provider": course.provider,
         "course_url": course.course_url,
         "normalized_title": course.normalized_title,
-        "search_document": course.search_document,
-        "tokenized_text": course.tokenized_text,
+        "search_document": "" if compact else course.search_document,
+        "tokenized_text": "" if compact else course.tokenized_text,
+        "search_document_length": int(search_document_length or 0),
         "difficulty_level": course.difficulty_level,
         "estimated_hours": course.estimated_hours,
         "price_type": course.price_type,
         "certificate_type": course.certificate_type,
         "category": category_payload,
         "tags": tag_payloads,
+        "tag_ids": tag_ids,
         "is_active": course.is_active,
         "created_at": course.created_at.isoformat() if course.created_at else None,
         "updated_at": course.updated_at.isoformat() if course.updated_at else None,
@@ -238,12 +256,51 @@ class AdminCourseAPIView(APIView):
 
     def get(self, request):
         include_taxonomy = _course_taxonomy_supported()
-        if not include_taxonomy:
-            return Response(_fetch_admin_courses_from_legacy_schema())
+        compact = str(request.query_params.get("compact", "")).lower() in {"1", "true", "yes"}
+        raw_course_id = request.query_params.get("id")
+        course_id = None
+        if raw_course_id not in (None, ""):
+            try:
+                course_id = int(raw_course_id)
+            except (TypeError, ValueError):
+                return Response({"detail": "ID khoa hoc khong hop le."}, status=status.HTTP_400_BAD_REQUEST)
 
-        courses = Course.objects.order_by("-updated_at", "title")
-        courses = courses.select_related("category").prefetch_related("tags")
-        return Response([_serialize_admin_course(course, include_taxonomy=include_taxonomy) for course in courses])
+        if not include_taxonomy:
+            payloads = _fetch_admin_courses_from_legacy_schema(compact=compact, course_id=course_id)
+            if course_id is not None:
+                if not payloads:
+                    return Response({"detail": "Khong tim thay khoa hoc."}, status=status.HTTP_404_NOT_FOUND)
+                return Response(payloads[0])
+            return Response(payloads)
+
+        courses = Course.objects.order_by("-updated_at", "title").select_related("category")
+        if course_id is not None:
+            course = courses.prefetch_related("tags").filter(id=course_id).first()
+            if course is None:
+                return Response({"detail": "Khong tim thay khoa hoc."}, status=status.HTTP_404_NOT_FOUND)
+            return Response(_serialize_admin_course(course, include_taxonomy=include_taxonomy))
+
+        if compact:
+            courses = courses.annotate(search_document_length=Length("search_document")).defer(
+                "search_document",
+                "tokenized_text",
+            )
+            course_list = list(courses)
+            tag_ids_by_course_id = {course.id: [] for course in course_list}
+            for course_id_value, tag_id in Course.tags.through.objects.filter(
+                course_id__in=tag_ids_by_course_id.keys()
+            ).values_list("course_id", "coursetag_id"):
+                tag_ids_by_course_id[course_id_value].append(tag_id)
+            for course in course_list:
+                course._admin_tag_ids = tag_ids_by_course_id.get(course.id, [])
+            courses = course_list
+        else:
+            courses = courses.prefetch_related("tags")
+
+        return Response([
+            _serialize_admin_course(course, include_taxonomy=include_taxonomy, compact=compact)
+            for course in courses
+        ])
 
     def post(self, request):
         data = request.data
@@ -409,12 +466,37 @@ class AdminCourseAPIView(APIView):
 class AdminCategoryAPIView(APIView):
     permission_classes = [permissions.IsAdminUser]
 
+    def _resolve_parent(self, parent_id, category=None):
+        if parent_id in (None, ""):
+            return None, None
+
+        try:
+            parent_pk = int(parent_id)
+        except (TypeError, ValueError):
+            return None, Response({"detail": "Danh muc cha khong hop le."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if category is not None and parent_pk == category.id:
+            return None, Response({"detail": "Danh muc khong the la cha cua chinh no."}, status=status.HTTP_400_BAD_REQUEST)
+
+        parent = CourseCategory.objects.filter(id=parent_pk).first()
+        if parent is None:
+            return None, Response({"detail": "Khong tim thay danh muc cha."}, status=status.HTTP_404_NOT_FOUND)
+
+        current = parent
+        while category is not None and current is not None:
+            if current.id == category.id:
+                return None, Response({"detail": "Phan cap danh muc khong hop le."}, status=status.HTTP_400_BAD_REQUEST)
+            current = current.parent
+
+        return parent, None
+
     def get(self, request):
         if not _taxonomy_tables_available():
             return _taxonomy_unavailable_response()
 
         categories = (
             CourseCategory.objects.annotate(course_count=Count("courses", distinct=True))
+            .select_related("parent")
             .prefetch_related("courses__tags")
             .order_by("name")
         )
@@ -439,10 +521,15 @@ class AdminCategoryAPIView(APIView):
         if CourseCategory.objects.filter(name__iexact=name).exists():
             return Response({"detail": "Danh muc nay da ton tai."}, status=status.HTTP_400_BAD_REQUEST)
 
+        parent, parent_error = self._resolve_parent(request.data.get("parent_id", request.data.get("parent")))
+        if parent_error is not None:
+            return parent_error
+
         category = CourseCategory.objects.create(
             name=name,
             slug=_build_unique_slug(CourseCategory, name),
             description=description,
+            parent=parent,
         )
         payload = CourseCategorySerializer(category).data
         payload["course_count"] = 0
@@ -472,6 +559,14 @@ class AdminCategoryAPIView(APIView):
         category.name = name
         category.slug = _build_unique_slug(CourseCategory, name, instance_id=category.id)
         category.description = description
+        if "parent_id" in request.data or "parent" in request.data:
+            parent, parent_error = self._resolve_parent(
+                request.data.get("parent_id", request.data.get("parent")),
+                category=category,
+            )
+            if parent_error is not None:
+                return parent_error
+            category.parent = parent
         category.save()
 
         payload = CourseCategorySerializer(category).data
@@ -564,3 +659,41 @@ class AdminTagAPIView(APIView):
             return Response({"detail": "Khong tim thay tag."}, status=status.HTTP_404_NOT_FOUND)
         tag.delete()
         return Response({"detail": "Da xoa tag."}, status=status.HTTP_200_OK)
+
+
+class AdminRecommendationLogAPIView(APIView):
+    permission_classes = [permissions.IsAdminUser]
+
+    def get(self, request):
+        import json
+
+        user_model = get_user_model()
+        logs = RecommendationLog.objects.select_related("user").order_by("-created_at")[:100]
+
+        results = []
+        for log in logs:
+            # Parse course IDs and fetch titles
+            try:
+                course_ids = json.loads(log.recommended_course_ids)
+            except (json.JSONDecodeError, TypeError):
+                course_ids = []
+
+            course_titles = list(
+                Course.objects.filter(id__in=course_ids).values_list("title", flat=True)
+            )
+
+            results.append(
+                {
+                    "id": log.id,
+                    "user": log.user.username,
+                    "user_id": log.user.id,
+                    "context": log.context,
+                    "query_text": log.query_text[:120],
+                    "recommended_courses": course_titles,
+                    "recommended_course_ids": course_ids,
+                    "score_avg": log.score_avg,
+                    "result_count": log.result_count,
+                    "created_at": log.created_at.isoformat(),
+                }
+            )
+        return Response(results)

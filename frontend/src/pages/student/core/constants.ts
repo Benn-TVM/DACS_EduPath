@@ -23,7 +23,7 @@ export const dashboardFilters = [
 ]
 
 /** Ảnh phù hợp theo chủ đề danh mục */
-const categoryImages: Record<string, string[]> = {
+export const categoryImages: Record<string, string[]> = {
   // AI, Machine Learning, Deep Learning
   'Trí tuệ Nhân tạo & Học máy': [
     'https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=640&h=360&fit=crop',
@@ -107,7 +107,7 @@ const categoryImages: Record<string, string[]> = {
 }
 
 /** Fallback ảnh cho khóa học không có danh mục */
-const defaultImages = [
+export const defaultImages = [
   'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=640&h=360&fit=crop',
   'https://images.unsplash.com/photo-1504639725590-34d0984388bd?w=640&h=360&fit=crop',
   'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=640&h=360&fit=crop',
@@ -128,6 +128,11 @@ export const appTopbarAvatar =
 export const appNavItems = [
   { id: 'dashboard', label: 'Trang chủ', path: '/dashboard', icon: appIcons.dashboard },
   { id: 'roadmap', label: 'Lộ trình AI', path: '/roadmap', icon: appIcons.roadmap },
-  { id: 'compare', label: 'So sánh', path: '/compare', icon: appIcons.compare },
   { id: 'hub', label: 'Cộng đồng', path: '/hub', icon: appIcons.hub },
 ] as const
+
+export const landingNavItems = [
+  { href: '#features', label: 'Tính năng' },
+  { href: '#courses', label: 'Khóa học' },
+  { href: '#community', label: 'Cộng đồng' },
+]

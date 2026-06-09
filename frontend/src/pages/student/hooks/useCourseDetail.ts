@@ -3,8 +3,8 @@ import type { CourseRecord } from '../student-core'
 import {
   extractSavedCourseIds,
   fetchCourseDetail,
-  fetchOptionalRecommendations,
   fetchOptionalSavedCourses,
+  getCachedRecommendations,
   removeSavedCourse,
   saveCourse,
 } from '../services/student-api'
@@ -33,17 +33,14 @@ export function useCourseDetail(courseId?: string) {
       setErrorText('')
 
       try {
-        const [courseResponse, recommendationsResponse, savedCourses] = await Promise.all([
+        const [courseResponse, savedCourses] = await Promise.all([
           fetchCourseDetail(courseId),
-          fetchOptionalRecommendations(),
           fetchOptionalSavedCourses(),
         ])
 
         setCourse(courseResponse)
-
         const matchedRecommendation =
-          recommendationsResponse.find((item) => String(item.id) === String(courseId)) ?? null
-
+          getCachedRecommendations().find((item) => String(item.id) === String(courseId)) ?? null
         setRecommendationMeta(
           matchedRecommendation
             ? {
@@ -52,7 +49,6 @@ export function useCourseDetail(courseId?: string) {
               }
             : null,
         )
-
         setIsSaved(extractSavedCourseIds(savedCourses).includes(Number(courseId)))
       } catch {
         setErrorText('Không thể tải nội dung khóa học này.')

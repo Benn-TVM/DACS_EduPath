@@ -1,37 +1,117 @@
-from django.db.models import Count
-from django.utils.text import slugify
 from rest_framework import permissions, status
-from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.exceptions import TokenError
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView
 
-from ..models import Course, CourseCategory, CourseReview, CourseTag, ReviewVote, Roadmap, RoadmapStep, SavedCourse, SearchHistory, UserProfile
+from ..models import Course, RecommendationLog, Roadmap, RoadmapStep, SavedCourse, UserProfile
 from ..serializers import (
-    CourseCategorySerializer,
-    CourseReviewSerializer,
-    CourseSerializer,
-    CourseTagSerializer,
-    CreateReviewSerializer,
-    EduPathTokenObtainPairSerializer,
-    EduPathTokenRefreshSerializer,
     GenerateRoadmapInputSerializer,
-    RankedCourseSerializer,
-    RegisterSerializer,
     RoadmapListSerializer,
     RoadmapSerializer,
-    RoadmapStepSerializer,
-    SavedCourseCreateSerializer,
-    SavedCourseSerializer,
-    SearchHistorySerializer,
-    UserProfileSerializer,
-    UserSerializer,
 )
+from ..ml_recommender import rank_courses_for_profile
 from ..services import build_profile_query, rank_courses_by_text
 
-from .base import *
+from .base import _parse_top_k, _ranked_course_payload
+
+ROADMAP_CANDIDATE_COUNT = 8
+
+
+def _roadmap_skills_from_candidate(item: dict) -> list[str]:
+    course = item["course"]
+    matched_terms = [term for term in item.get("matched_terms", []) if term]
+    if matched_terms:
+        return matched_terms[:5]
+
+    tag_names = [tag.name for tag in course.tags.all()[:5]]
+    if tag_names:
+        return tag_names
+
+    return [course.title]
+
+
+def _build_deterministic_roadmap(user_content: str, ranked_candidates: list[dict]) -> dict:
+    phase_names = [
+        "Giai doan 1: Nen tang",
+        "Giai doan 2: Ky nang cot loi",
+        "Giai doan 3: Thuc hanh ung dung",
+        "Giai doan 4: Chuyen sau",
+        "Giai doan 5: Du an portfolio",
+        "Giai doan 6: Hoan thien",
+    ]
+    selected_candidates = ranked_candidates[:6]
+    steps = []
+    extracted_skills = []
+
+    for index, item in enumerate(selected_candidates):
+        course = item["course"]
+        skills = _roadmap_skills_from_candidate(item)
+        extracted_skills.extend(skills)
+        steps.append(
+            {
+                "order": index + 1,
+                "phase_name": phase_names[index] if index < len(phase_names) else f"Giai doan {index + 1}",
+                "description": f"Hoc khoa {course.title} vi khoa nay duoc he thong ML/hybrid chon phu hop voi muc tieu.",
+                "skills": skills,
+                "course_id": course.id,
+            }
+        )
+
+    return {
+        "title": f"Lo trinh hoc tap - {user_content[:60]}",
+        "target_role": user_content[:100],
+        "extracted_skills": list(dict.fromkeys(extracted_skills)),
+        "steps": steps,
+        "generation_source": "deterministic_fallback",
+        "candidate_course_ids": [item["course"].id for item in ranked_candidates],
+    }
+
+
+def _coerce_course_id(value) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _verified_llm_roadmap(ai_result: dict, ranked_candidates: list[dict]) -> dict | None:
+    if not isinstance(ai_result, dict):
+        return None
+
+    steps = ai_result.get("steps")
+    if not isinstance(steps, list) or not steps:
+        return None
+
+    allowed_ids = {item["course"].id for item in ranked_candidates}
+    verified_steps = []
+    for index, step in enumerate(steps):
+        if not isinstance(step, dict):
+            return None
+
+        course_id = _coerce_course_id(step.get("course_id"))
+        if course_id not in allowed_ids:
+            return None
+        order = _coerce_course_id(step.get("order")) or index + 1
+
+        verified_steps.append(
+            {
+                **step,
+                "order": order,
+                "course_id": course_id,
+                "skills": step.get("skills") if isinstance(step.get("skills"), list) else [],
+            }
+        )
+
+    verified_result = {
+        **ai_result,
+        "title": ai_result.get("title") or "Lo trinh hoc tap",
+        "target_role": ai_result.get("target_role") or "",
+        "extracted_skills": ai_result.get("extracted_skills") if isinstance(ai_result.get("extracted_skills"), list) else [],
+        "steps": verified_steps,
+        "generation_source": "llm_verified",
+        "candidate_course_ids": [item["course"].id for item in ranked_candidates],
+    }
+    return verified_result
+
 
 class RecommendationAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -49,20 +129,30 @@ class RecommendationAPIView(APIView):
                 status=status.HTTP_200_OK,
             )
 
-        ranked = rank_courses_by_text(query_text, top_k=top_k)
-        payload = [
-            {
-                **CourseSerializer(item["course"]).data,
-                "score": item["score"],
-                "matched_terms": item["matched_terms"],
-            }
-            for item in ranked
-        ]
+        ranked = rank_courses_for_profile(profile, query_text, top_k=top_k)
+        payload = [_ranked_course_payload(item) for item in ranked]
+
+        # ── Ghi log gợi ý AI ──
+        import json
+        try:
+            course_ids = [item["course"].id for item in ranked]
+            scores = [item["score"] for item in ranked]
+            RecommendationLog.objects.create(
+                user=request.user,
+                context=RecommendationLog.CONTEXT_DASHBOARD,
+                query_text=query_text[:500],
+                recommended_course_ids=json.dumps(course_ids),
+                score_avg=round(sum(scores) / len(scores), 4) if scores else None,
+                result_count=len(course_ids),
+            )
+        except Exception:
+            pass  # Không để lỗi log ảnh hưởng kết quả gợi ý
+
         return Response(
             {
                 "query_text": query_text,
                 "count": len(payload),
-                "results": RankedCourseSerializer(payload, many=True).data,
+                "results": payload,
             }
         )
 
@@ -76,8 +166,8 @@ class GenerateRoadmapAPIView(APIView):
         import json
         import logging
 
-        from .ai_service import build_courses_context, get_ai_provider
-        from .jd_parser import parse_input
+        from ..ai_service import build_courses_context_from_ranked, get_ai_provider
+        from ..jd_parser import parse_input
 
         logger = logging.getLogger(__name__)
 
@@ -94,10 +184,24 @@ class GenerateRoadmapAPIView(APIView):
             )
 
         user_content = parsed["content"]
+        profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        ranked_candidates = rank_courses_for_profile(
+            profile,
+            user_content,
+            top_k=ROADMAP_CANDIDATE_COUNT,
+        )
+        if not ranked_candidates:
+            return Response(
+                {
+                    "detail": "Khong tim thay khoa hoc ung vien phu hop de tao lo trinh.",
+                    "results": [],
+                },
+                status=status.HTTP_200_OK,
+            )
 
         try:
             provider = get_ai_provider()
-            courses_context = build_courses_context()
+            courses_context = build_courses_context_from_ranked(ranked_candidates)
             ai_result = provider.generate_roadmap_json(user_content, courses_context)
         except Exception as exc:
             logger.exception("Lỗi khi gọi AI (Quá giới hạn hoặc lỗi trả về), kích hoạt fallback: %s", exc)
@@ -128,11 +232,17 @@ class GenerateRoadmapAPIView(APIView):
                 ]
             }
 
-        if not ai_result or not ai_result.get("steps"):
+        verified_ai_result = _verified_llm_roadmap(ai_result, ranked_candidates)
+        if verified_ai_result is None:
+            verified_ai_result = _build_deterministic_roadmap(user_content, ranked_candidates)
+
+        if not verified_ai_result or not verified_ai_result.get("steps"):
             return Response(
                 {"detail": "AI không trả về kết quả hợp lệ và không thể dùng fallback. Vui lòng thử lại."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+        ai_result = verified_ai_result
 
         roadmap = Roadmap.objects.create(
             user=request.user,

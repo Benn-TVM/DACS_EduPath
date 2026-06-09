@@ -11,7 +11,7 @@ import {
   normalizeText,
 } from '../student-core'
 import { useSavedCoursesList } from '../hooks/useSavedCoursesList'
-import { AppSidebar, AppTopbar } from '../student-layout'
+import { AppMobileNav, AppSidebar, AppTopbar } from '../student-layout'
 import '../styles/saved-history.css'
 
 export function SavedCoursesPage() {
@@ -30,6 +30,7 @@ export function SavedCoursesPage() {
   return (
     <div className="saved-page">
       <AppSidebar active="saved" />
+      <AppMobileNav active="saved" />
       <AppTopbar
         searchPlaceholder="Tìm kiếm trong danh sách đã lưu..."
         searchValue={searchTerm}
@@ -40,25 +41,10 @@ export function SavedCoursesPage() {
         <div className="saved-shell">
           <section className="saved-header">
             <h1>Khóa học đã lưu</h1>
-            <p>
-              Bạn có <strong>{savedCourses.length} khóa học</strong> đã lưu từ SOICT MOOC. Các lộ
-              trình này được tối ưu hóa cho mục tiêu nghề nghiệp của bạn.
-            </p>
           </section>
 
           {errorText ? <p className="saved-status saved-status--error">{errorText}</p> : null}
           {loading ? <p className="saved-status">Đang tải danh sách khóa học đã lưu...</p> : null}
-
-          {!loading && visibleSavedCourses.length === 0 ? (
-            <div className="saved-empty">
-              <h3>Chưa có khóa học phù hợp</h3>
-              <p>
-                {savedCourses.length
-                  ? 'Không có khóa học nào khớp với từ khóa bạn vừa nhập.'
-                  : 'Bạn chưa lưu khóa học nào. Hãy khám phá dashboard hoặc trang tìm kiếm để lưu các khóa học quan tâm.'}
-              </p>
-            </div>
-          ) : null}
 
           <div className="saved-list">
             {visibleSavedCourses.map((item, index) => {
@@ -117,16 +103,6 @@ export function SavedCoursesPage() {
               )
             })}
           </div>
-
-          <section className="saved-suggestion">
-            <span><AppFaIcon icon={appIcons.ai} /></span>
-            <h3>Bạn muốn khám phá thêm?</h3>
-            <p>
-              Dựa trên các khóa học bạn đã lưu, EduPath có thể đề xuất một lộ trình học tập chuyên
-              sâu dành riêng cho bạn.
-            </p>
-            <Link to="/dashboard">Khám phá lộ trình đề xuất</Link>
-          </section>
         </div>
       </main>
     </div>

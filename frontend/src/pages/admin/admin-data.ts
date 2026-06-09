@@ -53,11 +53,11 @@ export const courseVisuals = [
 ]
 
 export const sidebarItems = [
-  { label: 'Tổng quan', path: '/admin/overview', icon: appIcons.dashboard },
-  { label: 'Khóa học', path: '/admin/courses', icon: appIcons.course },
-  { label: 'Danh Mục & Tag', path: '/admin/taxonomy', icon: appIcons.filter },
-  { label: 'Người dùng', path: '/admin/users', icon: appIcons.hub },
-  { label: 'Báo cáo', path: '/admin/reports', icon: appIcons.trend },
+  { label: 'Tổng Quát', path: '/admin/overview', icon: appIcons.dashboard },
+  { label: 'Quản lý Khóa học', path: '/admin/courses', icon: appIcons.course },
+  { label: 'Quản lý Danh mục', path: '/admin/categories', icon: appIcons.categories },
+  { label: 'Quản Lý Tài Khoản', path: '/admin/users', icon: appIcons.users },
+  { label: 'Log Gợi ý', path: '/admin/logs', icon: appIcons.trend },
 ]
 
 export const overviewMetrics: AdminMetric[] = [

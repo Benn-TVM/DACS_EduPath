@@ -3,18 +3,29 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer, TokenRefreshSerializer
 
-from .models import Course, CourseCategory, CourseReview, CourseTag, ReviewVote, Roadmap, RoadmapStep, SavedCourse, SearchHistory, UserProfile
+from .models import CommunityPost, Course, CourseCategory, CourseReview, CourseTag, PostComment, PostVote, ReviewVote, Roadmap, RoadmapStep, SavedCourse, SearchHistory, UserProfile
 
 User = get_user_model()
 
 
 class CourseCategorySerializer(serializers.ModelSerializer):
-    course_count = serializers.IntegerField(read_only=True)
-    tag_count = serializers.IntegerField(read_only=True)
+    parent_name = serializers.ReadOnlyField(source="parent.name")
 
     class Meta:
         model = CourseCategory
-        fields = ["id", "name", "slug", "description", "course_count", "tag_count"]
+        fields = ["id", "name", "slug", "description", "parent", "parent_name"]
+
+class CourseCategoryDetailSerializer(serializers.ModelSerializer):
+    course_count = serializers.IntegerField(read_only=True)
+    children = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CourseCategory
+        fields = ["id", "name", "slug", "description", "parent", "course_count", "children"]
+
+    def get_children(self, obj):
+        children = obj.children.all()
+        return CourseCategoryDetailSerializer(children, many=True).data
 
 
 class CourseTagSerializer(serializers.ModelSerializer):
@@ -52,12 +63,26 @@ class CourseSerializer(serializers.ModelSerializer):
         ]
 
 
-class RankedCourseSerializer(CourseSerializer):
-    score = serializers.FloatField()
-    matched_terms = serializers.ListField(child=serializers.CharField())
+class CourseCatalogSerializer(serializers.ModelSerializer):
+    category = CourseCategorySerializer(read_only=True)
 
-    class Meta(CourseSerializer.Meta):
-        fields = CourseSerializer.Meta.fields + ["score", "matched_terms"]
+    class Meta:
+        model = Course
+        fields = [
+            "id",
+            "title",
+            "course_code",
+            "provider",
+            "course_url",
+            "difficulty_level",
+            "estimated_hours",
+            "price_type",
+            "certificate_type",
+            "category",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class SearchHistorySerializer(serializers.ModelSerializer):
@@ -101,6 +126,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "interests",
             "learning_needs",
             "onboarding_completed",
+            "avatar",
         ]
 
 
@@ -384,3 +410,91 @@ class CreateReviewSerializer(serializers.Serializer):
     course_id = serializers.IntegerField()
     rating = serializers.IntegerField(min_value=1, max_value=5)
     comment = serializers.CharField(max_length=2000, required=False, allow_blank=True, default="")
+
+
+class PostCommentSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source="user.username", read_only=True)
+    full_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PostComment
+        fields = [
+            "id",
+            "user",
+            "username",
+            "full_name",
+            "content",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "user", "created_at", "updated_at"]
+
+    def get_full_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username
+
+
+class CommunityPostSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source="user.username", read_only=True)
+    full_name = serializers.SerializerMethodField()
+    course_title = serializers.CharField(source="course.title", read_only=True)
+    upvotes = serializers.SerializerMethodField()
+    downvotes = serializers.SerializerMethodField()
+    user_vote = serializers.SerializerMethodField()
+    comments = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CommunityPost
+        fields = [
+            "id",
+            "user",
+            "username",
+            "full_name",
+            "course",
+            "course_title",
+            "title",
+            "content",
+            "image",
+            "upvotes",
+            "downvotes",
+            "user_vote",
+            "comments",
+            "comments_count",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "user", "created_at", "updated_at"]
+
+    def get_full_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username
+
+    def get_upvotes(self, obj):
+        return obj.votes.filter(vote_type=PostVote.UPVOTE).count()
+
+    def get_downvotes(self, obj):
+        return obj.votes.filter(vote_type=PostVote.DOWNVOTE).count()
+
+    def get_user_vote(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return None
+        vote = obj.votes.filter(user=request.user).first()
+        return vote.vote_type if vote else None
+
+    def get_comments(self, obj):
+        comments = obj.comments.filter(is_active=True).select_related("user").order_by("created_at")[:3]
+        return PostCommentSerializer(comments, many=True).data
+
+    def get_comments_count(self, obj):
+        return obj.comments.filter(is_active=True).count()
+
+
+class CreatePostSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    content = serializers.CharField(max_length=5000, required=True, allow_blank=False)
+    course_id = serializers.IntegerField(required=False, allow_null=True)
+    image = serializers.ImageField(required=False, allow_null=True)
+
+
+class CreatePostCommentSerializer(serializers.Serializer):
+    content = serializers.CharField(max_length=2000, required=True, allow_blank=False)

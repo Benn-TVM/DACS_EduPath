@@ -131,6 +131,68 @@ export function formatCourseScore(course: CourseRecord) {
   return course.provider
 }
 
+export function formatCoursePercent(value?: number | null) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return null
+  }
+
+  return `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`
+}
+
+export function getCourseRankerLabel(course: CourseRecord) {
+  if (course.ranker === 'ml_reranking') {
+    return 'ML reranking'
+  }
+
+  if (course.ranker === 'hybrid') {
+    return 'Hybrid fallback'
+  }
+
+  return 'Catalog'
+}
+
+export function getCourseRankerTone(course: CourseRecord) {
+  if (course.ranker === 'ml_reranking') {
+    return 'ml'
+  }
+
+  if (course.ranker === 'hybrid') {
+    return 'hybrid'
+  }
+
+  return 'catalog'
+}
+
+export function getCourseScoreDetails(course: CourseRecord) {
+  const details = [
+    course.ml_score !== null && course.ml_score !== undefined
+      ? `ML ${formatCoursePercent(course.ml_score)}`
+      : null,
+    typeof course.baseline_score === 'number'
+      ? `Hybrid ${formatCoursePercent(course.baseline_score)}`
+      : null,
+  ].filter(Boolean)
+
+  return details.join(' · ')
+}
+
+export function getCourseShortExplanation(course: CourseRecord, maxLength = 140) {
+  const rawText = course.explanation?.trim()
+    || (course.matched_terms?.length
+      ? `Khớp với: ${course.matched_terms.slice(0, 4).join(', ')}`
+      : '')
+
+  if (!rawText) {
+    return ''
+  }
+
+  if (rawText.length <= maxLength) {
+    return rawText
+  }
+
+  return `${rawText.slice(0, Math.max(0, maxLength - 3)).trim()}...`
+}
+
 export function getCourseLevel(course: CourseRecord) {
   const haystack = buildCourseHaystack(course)
 
@@ -177,17 +239,32 @@ export function getCourseDescriptionParagraphs(course: CourseRecord) {
 }
 
 export function getLearningFocus(course: CourseRecord) {
-  const tags = getCourseTags(course)
+  const category = getCourseCategory(course).toLowerCase()
+  const title = course.title
 
-  if (tags.length >= 4) {
-    return tags.slice(0, 4)
+  const objectives = [
+    `Nắm vững các kiến thức cốt lõi về ${title}`,
+    `Thực hành xây dựng các dự án thực tế trong lĩnh vực ${category}`,
+    `Phát triển tư duy giải quyết vấn đề và tối ưu hóa hệ thống`,
+    `Làm chủ các công cụ và thư viện chuyên dụng nhất hiện nay`,
+    `Cơ hội kết nối và học hỏi từ cộng đồng học viên cùng chuyên ngành`,
+    `Nhận chứng chỉ uy tín sau khi hoàn thành lộ trình học tập`,
+  ]
+
+  // Trộn nhẹ hoặc lấy theo ID để mỗi khóa học trông hơi khác nhau một chút
+  const seed = course.id || 0
+  const result: string[] = []
+
+  // Luôn lấy câu đầu là về title cho chính xác
+  result.push(objectives[0])
+
+  // Lấy thêm 3 câu khác dựa trên seed
+  for (let i = 1; i < 4; i++) {
+    const idx = (seed + i) % (objectives.length - 1) + 1
+    result.push(objectives[idx])
   }
 
-  const fallback = [course.provider, course.course_code ?? '', getCourseCategory(course), getCourseLevel(course)]
-    .filter(Boolean)
-    .map((item) => item.trim())
-
-  return Array.from(new Set([...tags, ...fallback])).slice(0, 4)
+  return Array.from(new Set(result))
 }
 
 export function getDisplayName() {

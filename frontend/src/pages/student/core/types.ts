@@ -1,4 +1,4 @@
-import type { IconDefinition } from \'@fortawesome/fontawesome-svg-core\'
+import type { IconDefinition } from '@fortawesome/fontawesome-svg-core'
 
 export interface AppNavItem {
   id: string
@@ -7,15 +7,26 @@ export interface AppNavItem {
   icon: IconDefinition
 }
 
+export interface CourseCategory {
+  id: number
+  name: string
+  slug: string
+  description?: string
+  parent?: number | null
+  parent_name?: string | null
+  children?: CourseCategory[]
+}
+
 export interface CourseRecord {
   id: number
   title: string
   course_code: string | null
   provider: string
   course_url: string
-  normalized_title: string
-  search_document: string
-  tokenized_text: string
+  normalized_title?: string
+  search_document?: string
+  search_document_length?: number
+  tokenized_text?: string
   difficulty_level?: string
   estimated_hours?: number | null
   price_type?: string
@@ -23,20 +34,21 @@ export interface CourseRecord {
   is_active?: boolean
   created_at?: string
   updated_at?: string
-  category?: {
-    id: number
-    name: string
-    slug: string
-    description?: string
-  } | null
+  category?: CourseCategory | null
   tags?: Array<{
     id: number
     name: string
     slug: string
     description?: string
   }>
+  tag_ids?: number[]
   score?: number
+  baseline_score?: number
+  ml_score?: number | null
+  ranker?: string
   matched_terms?: string[]
+  explanation?: string
+  score_breakdown?: Record<string, number>
 }
 
 export interface SavedCourseRecord {
@@ -67,6 +79,7 @@ export interface OnboardingProfile {
   interests: string
   learning_needs: string
   onboarding_completed: boolean
+  avatar?: string
 }
 
 export interface CourseQueryResponse {

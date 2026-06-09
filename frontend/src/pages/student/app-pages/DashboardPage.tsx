@@ -1,30 +1,35 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { AppFaIcon, appIcons } from '../../../components/icons/font-awesome'
-import { hasAuthSession } from '../../../services/api'
 import {
-  dashboardFilters,
   formatCourseScore,
   getCourseBadge,
   getCourseCategory,
-  getCourseDescription,
   getCourseLevel,
-  getCourseTags,
+  getCourseRankerLabel,
+  getCourseRankerTone,
+  getCourseScoreDetails,
+  getCourseShortExplanation,
   getCourseVisual,
-  matchesCourseFilter,
 } from '../student-core'
 import { useDashboardData } from '../hooks/useDashboardData'
-import { AppSidebar, AppTopbar } from '../student-layout'
+import { AppMobileNav, AppSidebar, AppTopbar } from '../student-layout'
 import '../styles/dashboard-search.css'
 import '../styles/dashboard-widgets.css'
 
+const COURSE_RENDER_BATCH_SIZE = 96
+const ALL_INDUSTRIES_LABEL = 'Tất cả'
+
 export function DashboardPage() {
-  const isAuthenticated = hasAuthSession()
   const navigate = useNavigate()
-  const [activeFilter, setActiveFilter] = useState(dashboardFilters[0])
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [activeIndustry, setActiveIndustry] = useState<string>(ALL_INDUSTRIES_LABEL)
+  const [activeMajor, setActiveMajor] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeRecommendationIndex, setActiveRecommendationIndex] = useState(0)
+  const [courseRenderLimit, setCourseRenderLimit] = useState(COURSE_RENDER_BATCH_SIZE)
   const {
     baseCourses,
     recommendationCourses,
@@ -33,15 +38,65 @@ export function DashboardPage() {
     errorText,
     isLoading,
     isRecommendationLoading,
+    isMoreCatalogLoading,
+    catalogTotalCount,
+    hasMoreCatalogCourses,
+    hasCompletedOnboarding,
+    categories,
+    isAuthenticated,
     refreshDashboardData,
+    loadMoreCatalogCourses,
     toggleSavedCourse,
   } = useDashboardData()
 
+  useEffect(() => {
+    const industryParam = searchParams.get('industry')
+    const majorParam = searchParams.get('major')
+
+    if (majorParam) {
+      setActiveMajor(majorParam)
+      // Tìm industry cha từ danh sách categories
+      const parentIndustry = categories.find((cat) =>
+        cat.children?.some((child) => child.name === majorParam),
+      )
+      if (parentIndustry) {
+        setActiveIndustry(parentIndustry.name)
+      } else if (industryParam) {
+        setActiveIndustry(industryParam)
+      }
+    } else if (industryParam) {
+      setActiveIndustry(industryParam)
+      setActiveMajor(null)
+    } else {
+      // Nếu không có tham số nào trên URL, reset về mặc định
+      setActiveIndustry('Tất cả')
+      setActiveMajor(null)
+    }
+  }, [searchParams, categories])
+
   const spotlightCourses = useMemo(() => recommendationCourses.slice(0, 10), [recommendationCourses])
-  const visibleCourses = useMemo(
-    () => baseCourses.filter((course) => matchesCourseFilter(course, activeFilter)),
-    [activeFilter, baseCourses],
+  const visibleCourses = useMemo(() => {
+    return baseCourses.filter((course) => {
+      if (activeIndustry === 'Tất cả') return true
+
+      const category = course.category
+      if (!category) return false
+
+      // Nếu chỉ chọn ngành (Industry)
+      if (!activeMajor) {
+        // Khóa học thuộc ngành đó HOẶC thuộc một chuyên ngành con của ngành đó
+        return category.name === activeIndustry || category.parent_name === activeIndustry
+      }
+
+      // Nếu đã chọn chuyên ngành (Major)
+      return category.name === activeMajor
+    })
+  }, [activeIndustry, activeMajor, baseCourses])
+  const renderedCourses = useMemo(
+    () => visibleCourses.slice(0, courseRenderLimit),
+    [courseRenderLimit, visibleCourses],
   )
+  const hiddenCourseCount = Math.max(0, visibleCourses.length - renderedCourses.length)
   const spotlightCount = spotlightCourses.length
   const activeRecommendationVisualIndex =
     spotlightCount > 0 ? activeRecommendationIndex % spotlightCount : 0
@@ -49,6 +104,10 @@ export function DashboardPage() {
     () => spotlightCourses[activeRecommendationVisualIndex] ?? null,
     [activeRecommendationVisualIndex, spotlightCourses],
   )
+
+  useEffect(() => {
+    setCourseRenderLimit(COURSE_RENDER_BATCH_SIZE)
+  }, [activeIndustry, activeMajor])
 
   useEffect(() => {
     if (spotlightCount <= 1) {
@@ -97,9 +156,19 @@ export function DashboardPage() {
     setActiveRecommendationIndex((current) => (current + 1) % spotlightCount)
   }
 
+  async function handleLoadMoreCourses() {
+    if (hiddenCourseCount > 0) {
+      setCourseRenderLimit((current) => current + COURSE_RENDER_BATCH_SIZE)
+      return
+    }
+
+    await loadMoreCatalogCourses()
+  }
+
   return (
     <div className="dashboard-page">
       <AppSidebar active="dashboard" />
+      <AppMobileNav active="dashboard" />
 
       <main className="dashboard-main">
         <AppTopbar
@@ -110,125 +179,140 @@ export function DashboardPage() {
         />
 
         <div className="dashboard-content">
-          {/* ── Spotlight Section (Top 10) ── */}
-          {isRecommendationLoading ? (
-            <section className="dashboard-section dashboard-section--spotlight">
-              <div className="dashboard-section__head dashboard-section__head--spotlight">
-                <div>
-                  <h2>Top 10 khóa học phù hợp</h2>
-                </div>
-              </div>
-              <div className="dashboard-spotlight">
-                <article className="dashboard-spotlight__panel dashboard-spotlight__panel--skeleton">
-                  <div className="skeleton-block" style={{ width: '100%', height: '100%', minHeight: '220px', borderRadius: 'var(--radius-lg)', background: 'var(--color-surface-soft)', animation: 'skeleton-pulse 1.5s ease-in-out infinite' }} />
-                </article>
-              </div>
-            </section>
-          ) : activeRecommendation ? (
-            <section className="dashboard-section dashboard-section--spotlight">
-              <div className="dashboard-section__head dashboard-section__head--spotlight">
-                <div>
-                  <h2>Top 10 khóa học phù hợp</h2>
-                </div>
-              </div>
-
-              <div className="dashboard-spotlight">
-                {spotlightCount > 1 ? (
-                  <button
-                    type="button"
-                    className="dashboard-spotlight__nav dashboard-spotlight__nav--prev"
-                    aria-label="Khóa học trước"
-                    onClick={showPreviousRecommendation}
-                  >
-                    <AppFaIcon icon={appIcons.back} />
-                  </button>
-                ) : null}
-
-                <article className="dashboard-spotlight__panel">
-                  <div className="dashboard-spotlight__visual">
-                    <img
-                      src={getCourseVisual(activeRecommendationVisualIndex, activeRecommendation)}
-                      alt={activeRecommendation.title}
-                    />
-                    <div className="dashboard-spotlight__visual-overlay"></div>
+          {/* ── Spotlight Section (Top 10) – chỉ hiển khi đã đăng nhập và hoàn thành onboarding ── */}
+          {isAuthenticated && hasCompletedOnboarding && (
+            <>
+              {isRecommendationLoading ? (
+                <section className="dashboard-section dashboard-section--spotlight">
+                  <div className="dashboard-section__head dashboard-section__head--spotlight">
+                    <div>
+                      <h2>Top 10 khóa học phù hợp</h2>
+                    </div>
+                  </div>
+                  <div className="dashboard-spotlight">
+                    <article className="dashboard-spotlight__panel dashboard-spotlight__panel--skeleton">
+                      <div className="skeleton-block" style={{ width: '100%', height: '100%', minHeight: '220px', borderRadius: 'var(--radius-lg)', background: 'var(--color-surface-soft)', animation: 'skeleton-pulse 1.5s ease-in-out infinite' }} />
+                    </article>
+                  </div>
+                </section>
+              ) : activeRecommendation ? (
+                <section className="dashboard-section dashboard-section--spotlight">
+                  <div className="dashboard-section__head dashboard-section__head--spotlight">
+                    <div>
+                      <h2>Top 10 khóa học phù hợp</h2>
+                    </div>
                   </div>
 
-                  <div className="dashboard-spotlight__content">
-                    <div className="dashboard-spotlight__lead">
-                      <span className="dashboard-spotlight__eyebrow">
-                        {courseSource === 'recommendation' ? 'AI recommendation' : 'Catalog spotlight'}
-                      </span>
-                      <span className="dashboard-spotlight__badge">
-                        {getCourseBadge(activeRecommendationVisualIndex, 'recommendation')}
-                      </span>
-                    </div>
-                    
-                    <h3>{activeRecommendation.title}</h3>
+                  <div className="dashboard-spotlight">
+                    {spotlightCount > 1 ? (
+                      <button
+                        type="button"
+                        className="dashboard-spotlight__nav dashboard-spotlight__nav--prev"
+                        aria-label="Khóa học trước"
+                        onClick={showPreviousRecommendation}
+                      >
+                        <AppFaIcon icon={appIcons.back} />
+                      </button>
+                    ) : null}
 
-                    <div className="dashboard-spotlight__bottom">
-                      <div className="dashboard-spotlight__facts">
-                        <div>
-                          <span>Độ phù hợp</span>
-                          <strong>{formatCourseScore(activeRecommendation)}</strong>
-                        </div>
-                        <div>
-                          <span>Cấp độ</span>
-                          <strong>{getCourseLevel(activeRecommendation)}</strong>
-                        </div>
-                        <div>
-                          <span>Danh mục</span>
-                          <strong>{getCourseCategory(activeRecommendation)}</strong>
-                        </div>
+                    <article className="dashboard-spotlight__panel">
+                      <div className="dashboard-spotlight__visual">
+                        <img
+                          src={getCourseVisual(activeRecommendationVisualIndex, activeRecommendation)}
+                          alt={activeRecommendation.title}
+                        />
+                        <div className="dashboard-spotlight__visual-overlay"></div>
                       </div>
 
-                      <div className="dashboard-spotlight__actions">
-                        <Link className="course-primary-link course-primary-link--compact" to={`/courses/${activeRecommendation.id}`}>
-                          Xem chi tiết <AppFaIcon icon={appIcons.next} />
-                        </Link>
-                        {isAuthenticated ? (
-                          <button
-                            className={`ghost-action ghost-action--compact dashboard-spotlight__save${
-                              savedCourseIds.includes(activeRecommendation.id) ? ' is-saved' : ''
-                            }`}
-                            type="button"
-                            aria-label="Lưu khóa học spotlight"
-                            onClick={() => void toggleSavedCourse(activeRecommendation.id)}
-                          >
-                            <AppFaIcon icon={appIcons.saved} />
-                          </button>
+                      <div className="dashboard-spotlight__content">
+                        <div className="dashboard-spotlight__lead">
+                          <span className="dashboard-spotlight__eyebrow">
+                            {courseSource === 'recommendation' ? 'AI recommendation' : 'Catalog spotlight'}
+                          </span>
+                          <span className="dashboard-spotlight__badge">
+                            {getCourseBadge(activeRecommendationVisualIndex, 'recommendation')}
+                          </span>
+                          <span className={`course-ranking-source course-ranking-source--${getCourseRankerTone(activeRecommendation)} dashboard-spotlight__ranker`}>
+                            <AppFaIcon icon={activeRecommendation.ranker === 'ml_reranking' ? appIcons.ai : appIcons.trend} />
+                            {getCourseRankerLabel(activeRecommendation)}
+                          </span>
+                        </div>
+
+                        <h3>{activeRecommendation.title}</h3>
+
+                        {getCourseShortExplanation(activeRecommendation, 125) ? (
+                          <p className="dashboard-spotlight__insight">
+                            {getCourseShortExplanation(activeRecommendation, 125)}
+                          </p>
                         ) : null}
+
+                        <div className="dashboard-spotlight__bottom">
+                          <div className="dashboard-spotlight__facts">
+                            <div>
+                              <span>Độ phù hợp</span>
+                              <strong>{formatCourseScore(activeRecommendation)}</strong>
+                              {getCourseScoreDetails(activeRecommendation) ? (
+                                <small>{getCourseScoreDetails(activeRecommendation)}</small>
+                              ) : null}
+                            </div>
+                            <div>
+                              <span>Cấp độ</span>
+                              <strong>{getCourseLevel(activeRecommendation)}</strong>
+                            </div>
+                            <div>
+                              <span>Danh mục</span>
+                              <strong>{getCourseCategory(activeRecommendation)}</strong>
+                            </div>
+                          </div>
+
+                          <div className="dashboard-spotlight__actions">
+                            <Link className="course-primary-link course-primary-link--compact" to={`/courses/${activeRecommendation.id}`}>
+                              Xem chi tiết <AppFaIcon icon={appIcons.next} />
+                            </Link>
+                            <button
+                              className={`ghost-action ghost-action--compact dashboard-spotlight__save${
+                                savedCourseIds.includes(activeRecommendation.id) ? ' is-saved' : ''
+                              }`}
+                              type="button"
+                              aria-label="Lưu khóa học spotlight"
+                              onClick={() => void toggleSavedCourse(activeRecommendation.id)}
+                            >
+                              <AppFaIcon icon={appIcons.saved} />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    </article>
+
+                    {spotlightCount > 1 ? (
+                      <button
+                        type="button"
+                        className="dashboard-spotlight__nav dashboard-spotlight__nav--next"
+                        aria-label="Khóa học tiếp theo"
+                        onClick={showNextRecommendation}
+                      >
+                        <AppFaIcon icon={appIcons.next} />
+                      </button>
+                    ) : null}
                   </div>
-                </article>
 
-                {spotlightCount > 1 ? (
-                  <button
-                    type="button"
-                    className="dashboard-spotlight__nav dashboard-spotlight__nav--next"
-                    aria-label="Khóa học tiếp theo"
-                    onClick={showNextRecommendation}
-                  >
-                    <AppFaIcon icon={appIcons.next} />
-                  </button>
-                ) : null}
-              </div>
-
-              {spotlightCount > 1 ? (
-                <div className="dashboard-spotlight__progress" aria-label="Tiến trình carousel gợi ý">
-                  {spotlightCourses.map((course, index) => (
-                    <button
-                      key={course.id}
-                      type="button"
-                      className={index === activeRecommendationVisualIndex ? 'is-active' : ''}
-                      aria-label={`Chuyển đến khóa học ${index + 1}`}
-                      onClick={() => setActiveRecommendationIndex(index)}
-                    />
-                  ))}
-                </div>
+                  {spotlightCount > 1 ? (
+                    <div className="dashboard-spotlight__progress" aria-label="Tiến trình carousel gợi ý">
+                      {spotlightCourses.map((course, index) => (
+                        <button
+                          key={course.id}
+                          type="button"
+                          className={index === activeRecommendationVisualIndex ? 'is-active' : ''}
+                          aria-label={`Chuyển đến khóa học ${index + 1}`}
+                          onClick={() => setActiveRecommendationIndex(index)}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                </section>
               ) : null}
-            </section>
-          ) : null}
+            </>
+          )}
 
           {/* ── Catalog Section (Tất cả khóa học) ── */}
           <section className="dashboard-section">
@@ -236,19 +320,62 @@ export function DashboardPage() {
               <h2>Tất cả khóa học</h2>
             </div>
 
-            <div className="dashboard-filters">
-              {dashboardFilters.map((filter) => (
+            <div className="dashboard-filters dashboard-filters--industry">
+              <button
+                className={'Tất cả' === activeIndustry ? 'is-active' : ''}
+                type="button"
+                onClick={() => {
+                  setSearchParams({})
+                }}
+              >
+                <AppFaIcon icon={appIcons.categories} />
+                Tất cả
+              </button>
+              {categories.map((industry) => (
                 <button
-                  key={filter}
-                  className={filter === activeFilter ? 'is-active' : ''}
+                  key={industry.id}
+                  className={industry.name === activeIndustry ? 'is-active' : ''}
                   type="button"
-                  onClick={() => !isLoading && setActiveFilter(filter)}
-                  disabled={isLoading}
+                  onClick={() => {
+                    setSearchParams({ industry: industry.name })
+                  }}
                 >
-                  {filter}
+                  <AppFaIcon icon={appIcons.course} />
+                  {industry.name}
                 </button>
               ))}
             </div>
+
+            {activeIndustry !== 'Tất cả' && (
+              <div className="dashboard-filters dashboard-filters--major">
+                <button
+                  className={activeMajor === null ? 'is-active' : ''}
+                  type="button"
+                  onClick={() => {
+                    setSearchParams({ industry: activeIndustry })
+                  }}
+                >
+                  Tất cả chuyên ngành
+                </button>
+                {categories
+                  .find((ind) => ind.name === activeIndustry)
+                  ?.children?.map((major) => (
+                    <button
+                      key={major.id}
+                      className={major.name === activeMajor ? 'is-active' : ''}
+                      type="button"
+                      onClick={() => {
+                        setSearchParams({
+                          industry: activeIndustry,
+                          major: major.name,
+                        })
+                      }}
+                    >
+                      {major.name}
+                    </button>
+                  ))}
+              </div>
+            )}
 
             {errorText ? <p className="dashboard-status dashboard-status--error">{errorText}</p> : null}
 
@@ -279,8 +406,16 @@ export function DashboardPage() {
                   </div>
                 ) : null}
 
+                {visibleCourses.length > 0 ? (
+                  <p className="dashboard-catalog-meta">
+                    Đã tải <strong>{baseCourses.length}</strong>/{catalogTotalCount || baseCourses.length} khóa trong catalog.
+                    Hiển thị <strong>{renderedCourses.length}</strong>/{visibleCourses.length} khóa học.
+                    Dùng ô tìm kiếm để lọc chính xác hơn trong toàn bộ dữ liệu.
+                  </p>
+                ) : null}
+
                 <div className="course-grid">
-                  {visibleCourses.map((course, index) => (
+                  {renderedCourses.map((course, index) => (
                     <Link to={`/courses/${course.id}`} key={course.id} className="course-card">
                       <div className="course-card__image">
                         <img src={getCourseVisual(index, course)} alt={course.title} />
@@ -301,6 +436,26 @@ export function DashboardPage() {
                     </Link>
                   ))}
                 </div>
+
+                {hiddenCourseCount > 0 || hasMoreCatalogCourses ? (
+                  <div className="dashboard-load-more">
+                    <button
+                      type="button"
+                      onClick={() => void handleLoadMoreCourses()}
+                      disabled={isMoreCatalogLoading}
+                      style={{ fontSize: 0 }}
+                    >
+                      <span style={{ fontSize: '1rem' }}>
+                        {isMoreCatalogLoading
+                          ? 'Đang tải thêm...'
+                          : hiddenCourseCount > 0
+                            ? `Xem thêm ${Math.min(COURSE_RENDER_BATCH_SIZE, hiddenCourseCount)} khóa học`
+                            : 'Tải thêm khóa học'}
+                      </span>
+                      Xem thêm {Math.min(COURSE_RENDER_BATCH_SIZE, hiddenCourseCount)} khóa học
+                    </button>
+                  </div>
+                ) : null}
               </>
             )}
           </section>

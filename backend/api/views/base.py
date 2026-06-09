@@ -1,35 +1,10 @@
-from django.db.models import Count
 from django.utils.text import slugify
-from rest_framework import permissions, status
 from rest_framework.exceptions import ValidationError
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework_simplejwt.exceptions import TokenError
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView
 
-from ..models import Course, CourseCategory, CourseReview, CourseTag, ReviewVote, Roadmap, RoadmapStep, SavedCourse, SearchHistory, UserProfile
+from ..models import SearchHistory
 from ..serializers import (
-    CourseCategorySerializer,
-    CourseReviewSerializer,
     CourseSerializer,
-    CourseTagSerializer,
-    CreateReviewSerializer,
-    EduPathTokenObtainPairSerializer,
-    EduPathTokenRefreshSerializer,
-    GenerateRoadmapInputSerializer,
-    RankedCourseSerializer,
-    RegisterSerializer,
-    RoadmapListSerializer,
-    RoadmapSerializer,
-    RoadmapStepSerializer,
-    SavedCourseCreateSerializer,
-    SavedCourseSerializer,
-    SearchHistorySerializer,
-    UserProfileSerializer,
-    UserSerializer,
 )
-from ..services import build_profile_query, rank_courses_by_text
 
 def _parse_top_k(raw_value, *, default: int = 10, minimum: int = 1, maximum: int = 50) -> int:
     if raw_value in (None, ""):
@@ -64,6 +39,19 @@ def _save_search_history(user, query_text: str) -> None:
     )
     if history_ids_to_keep:
         SearchHistory.objects.filter(user=user).exclude(id__in=history_ids_to_keep).delete()
+
+
+def _ranked_course_payload(item: dict) -> dict:
+    return {
+        **CourseSerializer(item["course"]).data,
+        "score": item["score"],
+        "baseline_score": item.get("baseline_score", item["score"]),
+        "ml_score": item.get("ml_score"),
+        "ranker": item.get("ranker", "hybrid"),
+        "matched_terms": item.get("matched_terms", []),
+        "explanation": item.get("explanation", ""),
+        "score_breakdown": item.get("score_breakdown", {}),
+    }
 
 
 def _build_unique_slug(model, name: str, *, instance_id: int | None = None) -> str:

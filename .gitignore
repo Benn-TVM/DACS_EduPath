@@ -16,14 +16,20 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 backend/.env
+backend/ml_models/
+backend/media/
+backend/reports/
 backend/venv/
 backend/tmp/
 backend/output/
+*.joblib
 
 # Node / frontend
 frontend/node_modules/
 frontend/dist/
 frontend/dist-ssr/
+frontend/.playwright-cli/
+frontend/output/
 frontend/*.local
 frontend/.vite/
 

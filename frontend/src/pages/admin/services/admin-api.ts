@@ -26,6 +26,8 @@ export interface AdminCategoryRow {
   name: string
   slug: string
   description: string
+  parent: number | null
+  parent_name: string | null
   course_count: number
   tag_count: number
 }
@@ -56,10 +58,13 @@ export interface CourseFormData {
   is_active: boolean
 }
 
+export type CourseUpdateData = Partial<CourseFormData> & { id?: number }
+
 export interface TaxonomyFormData {
   id?: number
   name: string
   description: string
+  parent_id?: number | null
 }
 
 export const taxonomyUnavailableMessage =
@@ -86,10 +91,27 @@ function unwrapError(error: unknown, fallback: string) {
 
 export async function fetchAdminCourses() {
   try {
-    const response = await api.get<CourseRecord[]>('admin/courses/')
+    const response = await api.get<CourseRecord[]>('admin/courses/', {
+      params: {
+        compact: true,
+      },
+    })
     return response.data ?? []
   } catch (error) {
     throw new Error(unwrapError(error, 'Không thể tải danh sách khóa học.'))
+  }
+}
+
+export async function fetchAdminCourse(courseId: number) {
+  try {
+    const response = await api.get<CourseRecord>('admin/courses/', {
+      params: {
+        id: courseId,
+      },
+    })
+    return response.data
+  } catch (error) {
+    throw new Error(unwrapError(error, 'KhÃ´ng thá»ƒ táº£i chi tiáº¿t khÃ³a há»c.'))
   }
 }
 
@@ -138,9 +160,20 @@ export async function createCourse(data: CourseFormData) {
   }
 }
 
-export async function updateCourse(data: CourseFormData) {
+export async function updateCourse(data: CourseUpdateData) {
   try {
-    const response = await api.put<{ detail: string; course: CourseRecord }>('admin/courses/', data)
+    const payload = { ...data }
+    if (!payload.normalized_title?.trim()) {
+      delete payload.normalized_title
+    }
+    if (!payload.search_document?.trim()) {
+      delete payload.search_document
+    }
+    if (!payload.tokenized_text?.trim()) {
+      delete payload.tokenized_text
+    }
+
+    const response = await api.put<{ detail: string; course: CourseRecord }>('admin/courses/', payload)
     return response.data
   } catch (error) {
     throw new Error(unwrapError(error, 'Không thể cập nhật khóa học.'))
@@ -207,5 +240,27 @@ export async function deleteTag(tagId: number) {
     return response.data
   } catch (error) {
     throw new Error(unwrapError(error, 'Không thể xóa tag.'))
+  }
+}
+
+export interface RecommendationLogRow {
+  id: number
+  user: string
+  user_id: number
+  context: string
+  query_text: string
+  recommended_courses: string[]
+  recommended_course_ids: number[]
+  score_avg: number | null
+  result_count: number
+  created_at: string
+}
+
+export async function fetchRecommendationLogs(): Promise<RecommendationLogRow[]> {
+  try {
+    const response = await api.get<RecommendationLogRow[]>('admin/recommendation-logs/')
+    return response.data ?? []
+  } catch (error) {
+    throw new Error(unwrapError(error, 'Không thể tải nhật ký gợi ý.'))
   }
 }

@@ -7,8 +7,21 @@
     transform: translateX(-100%);
     transition: transform 220ms ease;
     padding-top: calc(var(--shell-topbar-height) + 1rem);
+    align-items: stretch;
   }
   .admin-sidebar.is-open { transform: translateX(0); }
+  .admin-sidebar__nav {
+    align-items: stretch;
+    padding: 0 0.35rem;
+  }
+  .admin-sidebar__nav a {
+    width: 100%;
+    min-height: 54px;
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 0.75rem 0.9rem;
+    text-align: left;
+  }
   .admin-sidebar-backdrop {
     position: fixed;
     inset: 0;
@@ -23,17 +36,18 @@
   .admin-topbar__menu-toggle {
     display: grid;
     place-items: center;
-    width: 42px;
-    height: 42px;
+    width: 40px;
+    height: 40px;
     border: 0;
-    border-radius: 14px;
-    background: var(--color-surface-soft);
+    border-radius: 12px;
+    background: #eef5fb;
   }
   .admin-kpi-grid,
+  .admin-mini-metrics,
   .admin-layout-grid--overview,
   .admin-layout-grid--reports,
   .admin-layout-grid--taxonomy,
-  .admin-layout-grid--settings,
+  .admin-filter-bar,
   .admin-toolbar,
   .admin-course-table__head,
   .admin-course-row,
@@ -42,6 +56,12 @@
   .admin-table__head--top-courses,
   .admin-table__row--top-courses {
     grid-template-columns: 1fr;
+  }
+  .admin-filter-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-filter-bar .admin-toolbar__search {
+    grid-column: 1 / -1;
   }
 }
 
@@ -57,6 +77,21 @@
     padding-left: 1rem;
     padding-right: 1rem;
   }
+  .admin-topbar__brand {
+    min-width: 0;
+  }
+  .admin-topbar__actions {
+    gap: 0.5rem;
+  }
+  .admin-topbar .app-topbar__identity {
+    display: none;
+  }
+  .admin-topbar .app-topbar__avatar-button {
+    gap: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
   .admin-topbar__search {
     position: relative;
     top: auto;
@@ -68,11 +103,73 @@
     min-width: 0;
   }
   .admin-main {
-    padding: 8.75rem 1rem 2rem;
+    gap: 1.15rem;
+    padding: calc(var(--shell-topbar-height) + 1.4rem) 1rem 2rem;
   }
-  .admin-page-header {
-    align-items: start;
+  .admin-main > .admin-reveal {
+    gap: 1rem;
+  }
+  .admin-panel__headline {
     flex-direction: column;
+    align-items: stretch;
+  }
+  .admin-panel__actions,
+  .admin-panel__actions .admin-primary-button,
+  .admin-panel__actions .admin-ghost-button {
+    width: 100%;
+  }
+  .admin-import-summary {
+    grid-template-columns: 1fr;
+  }
+  .admin-import-preview article {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .admin-category-node__body,
+  .admin-modal__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .admin-category-node__body .admin-row-actions,
+  .admin-modal__actions .admin-primary-button,
+  .admin-modal__actions .admin-ghost-button {
+    width: 100%;
+  }
+  .admin-category-children {
+    margin-left: 0;
+    padding-left: 0.75rem;
+  }
+  .admin-panel,
+  .admin-alert-card {
+    border-radius: 18px;
+    padding: 1rem;
+  }
+  .admin-quality-chart,
+  .admin-readiness-chart {
+    grid-template-columns: 1fr;
+  }
+  .admin-quality-chart__gauge {
+    justify-self: center;
+    width: min(170px, 64vw);
+  }
+  .admin-score-histogram {
+    min-height: 210px;
+    padding: 0.8rem;
+  }
+  .admin-score-histogram__bar {
+    min-height: 120px;
+  }
+  .admin-kpi-card,
+  .admin-mini-metrics article {
+    min-height: auto;
+  }
+  .admin-filter-bar,
+  .admin-filter-bar--users,
+  .admin-filter-bar--logs {
+    grid-template-columns: 1fr;
+  }
+  .admin-filter-bar .admin-toolbar__search {
+    grid-column: auto;
   }
   .admin-bar-chart {
     min-height: 240px;
@@ -84,10 +181,99 @@
     flex-direction: column;
     align-items: start;
   }
+  .admin-modal-backdrop {
+    align-items: end;
+    padding: 1rem;
+  }
+  .admin-modal {
+    max-height: 88vh;
+    border-radius: 18px;
+  }
+  .admin-modal__header,
+  .admin-modal__body {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
   .admin-modal__row,
   .admin-modal__row--two,
   .admin-modal__row--three {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .admin-user-table-shell {
+    overflow-x: visible;
+  }
+
+  .admin-user-table-shell .admin-data-table {
+    display: block;
+    min-width: 0;
+  }
+
+  .admin-user-table-shell .admin-data-table thead {
+    display: none;
+  }
+
+  .admin-user-table-shell .admin-data-table tbody {
+    display: grid;
+    gap: 0.8rem;
+  }
+
+  .admin-user-table-shell .admin-data-table tr {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.95rem;
+    border: 1px solid rgba(125, 148, 166, 0.14);
+    border-radius: 16px;
+    background: #f7fbfe;
+  }
+
+  .admin-user-table-shell .admin-data-table td {
+    display: grid;
+    grid-template-columns: minmax(108px, 0.42fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 0.35rem 0.75rem;
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .admin-user-table-shell .admin-data-table td[data-label]::before {
+    content: attr(data-label);
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 800;
+  }
+
+  .admin-user-table-shell .admin-data-table td[data-label="Người dùng"] {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-user-table-shell .admin-data-table td[data-label="Người dùng"]::before,
+  .admin-user-table-shell .admin-user-table__expand-cell::before,
+  .admin-user-table-shell .admin-user-table__detail-cell::before {
+    display: none;
+  }
+
+  .admin-user-table-shell .admin-user-table__expand-cell {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .admin-user-table-shell .admin-user-table__detail-row {
+    margin-top: -0.35rem;
+    background: transparent;
+  }
+
+  .admin-user-table-shell .admin-user-table__detail-cell {
+    display: block;
+  }
+
+  .admin-course-score-list__row span,
+  .admin-course-score-list__row small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
   }
 }
 

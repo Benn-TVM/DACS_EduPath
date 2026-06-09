@@ -3,6 +3,7 @@ import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000/api/'
 const AUTH_STORAGE_KEY = 'edupath_auth'
 const AUTH_USER_KEY = 'edupath_user'
+export const AUTH_SESSION_CHANGED_EVENT = 'edupath:auth-session-changed'
 
 const baseConfig = {
   baseURL: API_BASE_URL,
@@ -26,6 +27,7 @@ export interface AuthProfile {
   interests?: string
   learning_needs?: string
   onboarding_completed?: boolean
+  avatar?: string
 }
 
 export interface AuthUser {
@@ -44,7 +46,7 @@ interface RetriableRequestConfig extends InternalAxiosRequestConfig {
 }
 
 function parseStorageValue<T>(storageKey: string): T | null {
-  const rawValue = localStorage.getItem(storageKey)
+  const rawValue = sessionStorage.getItem(storageKey)
   if (!rawValue) {
     return null
   }
@@ -52,13 +54,20 @@ function parseStorageValue<T>(storageKey: string): T | null {
   try {
     return JSON.parse(rawValue) as T
   } catch {
-    localStorage.removeItem(storageKey)
+    sessionStorage.removeItem(storageKey)
     return null
   }
 }
 
+function notifyAuthSessionChanged() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT))
+  }
+}
+
 export function saveAuthTokens(tokens: AuthTokens) {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokens))
+  sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(tokens))
+  notifyAuthSessionChanged()
 }
 
 export function getAuthTokens(): AuthTokens | null {
@@ -66,12 +75,13 @@ export function getAuthTokens(): AuthTokens | null {
 }
 
 export function clearAuthTokens() {
-  localStorage.removeItem(AUTH_STORAGE_KEY)
-  localStorage.removeItem(AUTH_USER_KEY)
+  sessionStorage.removeItem(AUTH_STORAGE_KEY)
+  sessionStorage.removeItem(AUTH_USER_KEY)
+  notifyAuthSessionChanged()
 }
 
 export function saveAuthUser(user: AuthUser) {
-  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user))
+  sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(user))
 }
 
 export function getAuthUser(): AuthUser | null {

@@ -45,6 +45,13 @@ BẮT BUỘC trả về đúng JSON format sau (không kèm markdown, không kè
 """
 
 
+ROADMAP_SYSTEM_PROMPT += (
+    "\nQUY TAC KIEM CHUNG BAT BUOC: Chi duoc dung course_id xuat hien trong "
+    "DANH SACH KHOA HOC CO SAN / ALLOWED_COURSE_IDS. Khong tu tao ID, "
+    "khong dung ma mon thay cho course_id, va khong de trong course_id."
+)
+
+
 class AIProvider(ABC):
     """Abstract base cho các AI provider."""
 
@@ -309,4 +316,31 @@ def build_courses_context(max_courses: int = 50) -> str:
             f"ID={course.id} | {course.title} | {course.provider} | "
             f"Code={course.course_code or 'N/A'}"
         )
+    return "\n".join(items)
+
+
+def build_courses_context_from_ranked(ranked_courses: list[dict], max_courses: int = 12) -> str:
+    """Tao context chi tu candidate list da duoc ML/hybrid chon truoc."""
+    selected_items = ranked_courses[:max_courses]
+    allowed_ids = ", ".join(str(item["course"].id) for item in selected_items)
+    items = [
+        f"ALLOWED_COURSE_IDS: [{allowed_ids}]",
+        "Moi step bat buoc phai dung course_id nam trong ALLOWED_COURSE_IDS.",
+    ]
+
+    for item in selected_items:
+        course = item["course"]
+        tags = list(course.tags.all()[:5])
+        tag_names = ", ".join(tag.name for tag in tags)
+        items.append(
+            f"ID={course.id} | {course.title} | {course.provider} | "
+            f"Code={course.course_code or 'N/A'} | "
+            f"Difficulty={course.difficulty_level or 'N/A'} | "
+            f"Price={course.price_type or 'N/A'} | "
+            f"Certificate={course.certificate_type or 'N/A'} | "
+            f"Ranker={item.get('ranker', 'hybrid')} | "
+            f"Score={item.get('score', 0)} | "
+            f"Tags={tag_names or 'N/A'}"
+        )
+
     return "\n".join(items)

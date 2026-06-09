@@ -1,32 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { AppFaIcon, appIcons } from '../../components/icons/font-awesome'
 import { clearAuthTokens, getAuthUser } from '../../services/api'
 import { adminAvatar, sidebarItems } from './admin-data'
-
-export function AdminPageHeader({
-  eyebrow,
-  title,
-  description,
-  action,
-}: {
-  eyebrow?: string
-  title: string
-  description?: string
-  action?: ReactNode
-}) {
-  return (
-    <header className="admin-page-header admin-reveal">
-      <div>
-        {eyebrow && <span>{eyebrow}</span>}
-        <h1>{title}</h1>
-        {description && <p>{description}</p>}
-      </div>
-      {action ? <div className="admin-page-header__action">{action}</div> : null}
-    </header>
-  )
-}
 
 export function AdminSidebar({
   isOpen,
@@ -100,11 +76,6 @@ export function AdminTopbar({
     }
   }, [isMenuOpen])
 
-  function handleMenuNavigation(path: string) {
-    setIsMenuOpen(false)
-    navigate(path)
-  }
-
   function handleLogout() {
     clearAuthTokens()
     setIsMenuOpen(false)
@@ -148,10 +119,6 @@ export function AdminTopbar({
 
           {isMenuOpen ? (
             <div className="app-topbar__menu-panel">
-              <button type="button" className="app-topbar__menu-item" onClick={() => handleMenuNavigation('/admin/settings')}>
-                <AppFaIcon icon={appIcons.settings} />
-                <span>Cài đặt</span>
-              </button>
               <button type="button" className="app-topbar__menu-item is-danger" onClick={handleLogout}>
                 <AppFaIcon icon={appIcons.logout} />
                 <span>Đăng xuất</span>

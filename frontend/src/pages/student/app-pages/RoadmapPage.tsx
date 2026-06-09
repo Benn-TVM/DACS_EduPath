@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { AppFaIcon, appIcons } from '../../../components/icons/font-awesome'
 import { useRoadmap } from '../hooks/useRoadmap'
 import type { RoadmapRecord } from '../hooks/useRoadmap'
-import { AppSidebar, AppTopbar } from '../student-layout'
+import { AppMobileNav, AppSidebar, AppTopbar } from '../student-layout'
 import '../styles/roadmap.css'
 
 const QUICK_SUGGESTIONS = [
@@ -55,6 +55,7 @@ export function RoadmapPage() {
   return (
     <div className="roadmap-page">
       <AppSidebar active="roadmap" />
+      <AppMobileNav active="roadmap" />
 
       <main className="roadmap-main">
         <AppTopbar />
@@ -114,34 +115,44 @@ function PromptInput({
   return (
     <section className="roadmap-prompt">
       <div className="roadmap-prompt__header">
-        <div className="roadmap-prompt__icon">
-          <AppFaIcon icon={appIcons.ai} />
+        <div className="roadmap-prompt__icon-wrapper">
+          <div className="roadmap-prompt__icon-glow"></div>
+          <div className="roadmap-prompt__icon">
+            <AppFaIcon icon={appIcons.ai} />
+          </div>
         </div>
-        <h1>Lộ trình học tập thông minh</h1>
-        <p>Mô tả mục tiêu nghề nghiệp hoặc dán link Job Description để AI tạo lộ trình cá nhân hóa cho bạn.</p>
+        <h1 className="roadmap-prompt__title">
+          Thiết kế <span className="roadmap-prompt__highlight">Lộ Trình Tương Lai</span>
+        </h1>
+        <p>Khai phóng tiềm năng với AI. Mô tả mục tiêu nghề nghiệp hoặc dán link Job Description để bắt đầu.</p>
       </div>
 
-      <div className="roadmap-form-container">
-        <form className="roadmap-form" onSubmit={onSubmit}>
-          <textarea
-            className="roadmap-form__textarea"
-            placeholder="Ví dụ: Tôi muốn trở thành Frontend Developer..."
-            rows={3}
-            value={inputText}
-            onChange={(event) => setInputText(event.target.value)}
-          />
-          <div className="roadmap-form__actions">
-            <button
-              className="roadmap-form__submit"
-              type="submit"
-              disabled={!inputText.trim()}
-              title="Tạo lộ trình AI"
-            >
-              <AppFaIcon icon={appIcons.ai} />
-              <span>Tạo lộ trình</span>
-            </button>
-          </div>
-        </form>
+      <div className="roadmap-form-wrapper">
+        <div className="roadmap-form-glow"></div>
+        <div className="roadmap-form-container">
+          <form className="roadmap-form" onSubmit={onSubmit}>
+            <textarea
+              className="roadmap-form__textarea"
+              placeholder="Bạn muốn chinh phục lĩnh vực nào? Ví dụ: Frontend Developer, Data Engineer..."
+              rows={3}
+              value={inputText}
+              onChange={(event) => setInputText(event.target.value)}
+            />
+            <div className="roadmap-form__actions">
+              <span className="roadmap-form__hint">Nhấn <kbd>Enter</kbd> để tạo</span>
+              <button
+                className="roadmap-form__submit"
+                type="submit"
+                disabled={!inputText.trim()}
+                title="Tạo lộ trình AI"
+              >
+                <span>Khởi tạo</span>
+                <AppFaIcon icon={appIcons.ai} />
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
 
         <div className="roadmap-prompt__suggestions">
           {QUICK_SUGGESTIONS.slice(0, 4).map((suggestion) => (
@@ -154,17 +165,36 @@ function PromptInput({
             </button>
           ))}
         </div>
-      </div>
     </section>
   )
 }
 
 function GeneratingState() {
+  const [loadingText, setLoadingText] = useState('AI đang phân tích yêu cầu của bạn...')
+
+  useEffect(() => {
+    const texts = [
+      'Đang quét hàng ngàn khóa học...',
+      'Đang thiết kế lộ trình tối ưu...',
+      'Sắp hoàn tất, vui lòng chờ...'
+    ]
+    let i = 0
+    const interval = setInterval(() => {
+      setLoadingText(texts[i % texts.length])
+      i++
+    }, 2500)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div className="roadmap-generating">
-      <div className="roadmap-generating__spinner" />
-      <h2>AI đang phân tích yêu cầu của bạn...</h2>
-      <p>Quá trình này có thể mất 10-30 giây. Đang quét cơ sở dữ liệu khóa học và thiết kế lộ trình tối ưu.</p>
+      <div className="roadmap-generating__waves">
+        <div className="wave"></div>
+        <div className="wave"></div>
+        <div className="wave"></div>
+      </div>
+      <h2>{loadingText}</h2>
+      <p>Quá trình này có thể mất vài chục giây để đảm bảo lộ trình phù hợp nhất với bạn.</p>
     </div>
   )
 }
@@ -258,6 +288,10 @@ function RoadmapResult({
                 <div className="roadmap-step__course-info">
                   <strong>{step.course.title}</strong>
                   <small>{step.course.provider}</small>
+                  <span className="roadmap-step__verified">
+                    <AppFaIcon icon={appIcons.check} />
+                    Đã verify từ hệ thống
+                  </span>
                 </div>
               </Link>
             ) : null}
